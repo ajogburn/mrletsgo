@@ -1,0 +1,39 @@
+<header class="bg-black border-b border-zinc-800 sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between">
+    <h1 class="text-3xl font-black tracking-tighter text-yellow-400">MR. LETSGO</h1>
+    
+    <nav class="hidden md:flex space-x-8 text-sm font-medium">
+      <a href="index.html" class="hover:text-yellow-400 transition">HOME</a>
+      <a href="shop.html" class="hover:text-yellow-400 transition">SHOP</a>
+      <a href="#" class="hover:text-yellow-400 transition">NEW DROPS</a>
+      <a href="#" class="hover:text-yellow-400 transition">BRANDS</a>
+      <a href="about.html" class="hover:text-yellow-400 transition">ABOUT</a>
+      <a href="contact.html" class="hover:text-yellow-400 transition">CONTACT</a>
+    </nav>
+
+    <div class="flex items-center gap-5">
+      <i class="fa-solid fa-magnifying-glass text-xl cursor-pointer hover:text-yellow-400"></i>
+      <i class="fa-solid fa-user text-xl cursor-pointer hover:text-yellow-400"></i>
+      <div onclick="window.location.href='cart.html'" class="relative cursor-pointer">
+        <i class="fa-solid fa-bag-shopping text-xl hover:text-yellow-400"></i>
+        <span id="cart-count" class="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">0</span>
+      </div>
+      
+      <button id="mobile-menu-btn" class="md:hidden text-3xl">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div id="mobile-menu" class="hidden md:hidden fixed inset-0 bg-black z-[100] pt-24 px-6">
+    <nav class="flex flex-col space-y-8 text-2xl font-medium">
+      <a href="index.html" class="hover:text-yellow-400">HOME</a>
+      <a href="shop.html" class="hover:text-yellow-400">SHOP</a>
+      <a href="#" class="hover:text-yellow-400">NEW DROPS</a>
+      <a href="#" class="hover:text-yellow-400">BRANDS</a>
+      <a href="about.html" class="hover:text-yellow-400">ABOUT</a>
+      <a href="contact.html" class="hover:text-yellow-400">CONTACT</a>
+    </nav>
+  </div>
+</header>

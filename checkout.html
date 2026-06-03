@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout | Mr. LetsGo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+<body class="bg-black text-white">
+
+  <div id="header-placeholder"></div>
+
+  <div class="max-w-7xl mx-auto px-6 py-12">
+    <h1 class="text-5xl font-black mb-10">Checkout</h1>
+    
+    <div class="grid lg:grid-cols-5 gap-12">
+      <!-- Left Side - Shipping -->
+      <div class="lg:col-span-3">
+        <h2 class="text-2xl font-bold mb-6">Shipping Details</h2>
+        <div class="space-y-6">
+          <div class="grid grid-cols-2 gap-4">
+            <input type="text" placeholder="First Name" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+            <input type="text" placeholder="Last Name" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+          </div>
+          <input type="email" placeholder="Email Address" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+          <input type="text" placeholder="Street Address" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+          <div class="grid grid-cols-3 gap-4">
+            <input type="text" placeholder="City" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+            <input type="text" placeholder="State" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+            <input type="text" placeholder="ZIP" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side - Order Summary -->
+      <div class="lg:col-span-2">
+        <h2 class="text-2xl font-bold mb-6">Order Summary</h2>
+        <div id="order-summary" class="bg-zinc-900 rounded-3xl p-6 mb-8"></div>
+
+        <div class="bg-zinc-900 rounded-3xl p-6">
+          <div class="flex justify-between mb-2">
+            <span>Subtotal</span>
+            <span id="subtotal">$513</span>
+          </div>
+          <div class="flex justify-between mb-6">
+            <span>Shipping</span>
+            <span class="text-green-400">FREE</span>
+          </div>
+          <hr class="border-zinc-700">
+          <div class="flex justify-between text-xl font-bold mt-4">
+            <span>Total</span>
+            <span id="total" class="text-yellow-400">$513</span>
+          </div>
+        </div>
+
+        <button onclick="completeOrder()" 
+          class="mt-8 w-full bg-yellow-400 hover:bg-white text-black py-6 rounded-2xl font-bold text-xl transition">
+          PLACE ORDER
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script>
+    fetch('header.html').then(res => res.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
+    fetch('footer.html').then(res => res.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+
+    // Mobile Menu
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#mobile-menu-btn')) {
+        const menu = document.getElementById('mobile-menu');
+        const btn = document.getElementById('mobile-menu-btn');
+        menu.classList.toggle('hidden');
+        btn.innerHTML = menu.classList.contains('hidden') ? '<i class="fa-solid fa-bars"></i>' : '<i class="fa-solid fa-xmark"></i>';
+      }
+    });
+
+    // Fake Order Data
+    function renderOrder() {
+      const items = [
+        {name: "Nike Air Force 1 '07", price: 129},
+        {name: "Jordan 1 Retro High", price: 189},
+        {name: "Adidas Samba OG", price: 95}
+      ];
+      let html = '';
+      let total = 0;
+
+      items.forEach(item => {
+        total += item.price;
+        html += `<div class="flex justify-between py-2"><span>${item.name}</span><span>$${item.price}</span></div>`;
+      });
+
+      document.getElementById('order-summary').innerHTML = html;
+      document.getElementById('subtotal').textContent = '$' + total;
+      document.getElementById('total').textContent = '$' + total;
+    }
+
+    function completeOrder() {
+      alert("✅ Thank you! Your order has been placed (Demo)");
+    }
+
+    window.onload = renderOrder;
+  </script>
+</body>
+</html>

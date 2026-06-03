@@ -6,100 +6,55 @@
   <title>Nike Air Force 1 '07 | Mr. LetsGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
-  </style>
 </head>
 <body class="bg-black text-white">
 
-  <!-- HEADER -->
-  <header class="bg-black border-b border-zinc-800 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between">
-      <h1 class="text-3xl font-black tracking-tighter text-yellow-400">MR. LETSGO</h1>
-      
-      <nav class="hidden md:flex space-x-8 text-sm font-medium">
-        <a href="shop.html" class="hover:text-yellow-400 transition">SHOP</a>
-        <a href="#" class="hover:text-yellow-400 transition">NEW DROPS</a>
-        <a href="#" class="hover:text-yellow-400 transition">BRANDS</a>
-        <a href="about.html" class="hover:text-yellow-400 transition">ABOUT</a>
-        <a href="#" class="hover:text-yellow-400 transition">CONTACT</a>
-      </nav>
-
-      <div class="flex items-center gap-5">
-        <i class="fa-solid fa-magnifying-glass text-xl cursor-pointer hover:text-yellow-400"></i>
-        <i class="fa-solid fa-user text-xl cursor-pointer hover:text-yellow-400"></i>
-        <div class="relative cursor-pointer">
-          <i onclick="window.location.href='cart.html'" class="fa-solid fa-bag-shopping text-xl hover:text-yellow-400"></i>
-          <span id="cart-count" class="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">3</span>
-        </div>
-      </div>
-    </div>
-  </header>
+  <div id="header-placeholder"></div>
 
   <div class="max-w-7xl mx-auto px-6 py-12">
     <div class="grid md:grid-cols-2 gap-12">
-      <!-- Image Gallery -->
       <div>
         <img id="main-image" src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa" class="w-full rounded-3xl">
-        <div class="grid grid-cols-4 gap-4 mt-6">
-          <img src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa" onclick="changeImage(this)" class="rounded-2xl cursor-pointer border-2 border-yellow-400">
-          <img src="https://images.unsplash.com/photo-1549298916-b41d501d3772" onclick="changeImage(this)" class="rounded-2xl cursor-pointer">
-          <img src="https://images.unsplash.com/photo-1600185365483-26d7a16503c6" onclick="changeImage(this)" class="rounded-2xl cursor-pointer">
-        </div>
       </div>
-
-      <!-- Product Info -->
       <div>
         <h1 class="text-4xl font-black">Nike Air Force 1 '07</h1>
-        <p class="text-yellow-400 text-2xl font-semibold mt-2">$129</p>
-        
+        <p class="text-yellow-400 text-3xl font-semibold mt-2">$129</p>
+
         <div class="mt-8">
-          <h3 class="font-semibold mb-3">Size (US)</h3>
-          <div class="grid grid-cols-5 gap-3">
-            <button class="size-btn border border-zinc-700 py-3 rounded-2xl hover:border-yellow-400">8</button>
-            <button class="size-btn border border-zinc-700 py-3 rounded-2xl hover:border-yellow-400">9</button>
-            <button class="size-btn border border-yellow-400 bg-zinc-900 py-3 rounded-2xl">10</button>
-            <button class="size-btn border border-zinc-700 py-3 rounded-2xl hover:border-yellow-400">11</button>
-            <button class="size-btn border border-zinc-700 py-3 rounded-2xl hover:border-yellow-400">12</button>
+          <h3 class="font-semibold mb-4">Size</h3>
+          <div class="grid grid-cols-6 gap-3">
+            <button class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400">8</button>
+            <button class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400">9</button>
+            <button class="size-btn border border-yellow-400 bg-zinc-900 py-4 rounded-2xl">10</button>
+            <button class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400">11</button>
+            <button class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400">12</button>
           </div>
         </div>
 
-        <div class="mt-8">
-          <button onclick="addToCart()" 
-            class="w-full bg-yellow-400 text-black py-5 font-bold text-lg rounded-2xl hover:bg-white transition">
-            ADD TO CART
-          </button>
-        </div>
-
-        <div class="mt-10 text-sm text-gray-400 leading-relaxed">
-          <p>The legend lives on. The Nike Air Force 1 '07 brings classic street style with premium leather and cushioned comfort.</p>
-          <ul class="mt-6 space-y-2">
-            <li>• Premium leather upper</li>
-            <li>• Air cushioning</li>
-            <li>• Rubber outsole with pivot circle</li>
-            <li>• Color: White/White</li>
-          </ul>
-        </div>
+        <button onclick="addToCart()" class="mt-10 w-full bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white">
+          ADD TO CART
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- FOOTER -->
-  <footer class="bg-black border-t border-zinc-800 py-16">
-    <div class="max-w-7xl mx-auto px-6 text-center text-gray-500 text-sm">
-      © 2026 Mr. LetsGo. All Rights Reserved.
-    </div>
-  </footer>
+  <div id="footer-placeholder"></div>
 
   <script>
-    function changeImage(el) {
-      document.getElementById('main-image').src = el.src;
-    }
+    fetch('header.html').then(res => res.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
+    fetch('footer.html').then(res => res.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#mobile-menu-btn')) {
+        const menu = document.getElementById('mobile-menu');
+        const btn = document.getElementById('mobile-menu-btn');
+        menu.classList.toggle('hidden');
+        btn.innerHTML = menu.classList.contains('hidden') ? '<i class="fa-solid fa-bars"></i>' : '<i class="fa-solid fa-xmark"></i>';
+      }
+    });
 
     function addToCart() {
-      alert("Added to cart! (Demo)");
-      let count = parseInt(document.getElementById('cart-count').innerText) || 0;
-      document.getElementById('cart-count').innerText = count + 1;
+      alert("Added to cart!");
     }
   </script>
 </body>
