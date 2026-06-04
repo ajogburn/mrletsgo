@@ -6,6 +6,8 @@
   <title>Contact | Mr. LetsGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="product.js"></script>
+  <script src="main.js"></script>
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
   </style>
@@ -99,26 +101,7 @@
   <div id="footer-placeholder"></div>
 
   <script>
-    // Load Header & Footer
-    fetch('header.html')
-      .then(res => res.text())
-      .then(data => document.getElementById('header-placeholder').innerHTML = data);
-    
-    fetch('footer.html')
-      .then(res => res.text())
-      .then(data => document.getElementById('footer-placeholder').innerHTML = data);
-
-    // Mobile Menu
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('#mobile-menu-btn')) {
-        const menu = document.getElementById('mobile-menu');
-        const btn = document.getElementById('mobile-menu-btn');
-        menu.classList.toggle('hidden');
-        btn.innerHTML = menu.classList.contains('hidden') 
-          ? '<i class="fa-solid fa-bars"></i>' 
-          : '<i class="fa-solid fa-xmark"></i>';
-      }
-    });
+    initCommonUI();
 
     function sendMessage() {
       alert("✅ Message sent successfully! (This is a demo)");

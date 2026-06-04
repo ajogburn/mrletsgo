@@ -6,6 +6,8 @@
   <title>Checkout | Mr. LetsGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="product.js"></script>
+  <script src="main.js"></script>
 </head>
 <body class="bg-black text-white">
 
@@ -65,44 +67,61 @@
   <div id="footer-placeholder"></div>
 
   <script>
-    fetch('header.html').then(res => res.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
-    fetch('footer.html').then(res => res.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+    initCommonUI();
 
-    // Mobile Menu
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('#mobile-menu-btn')) {
-        const menu = document.getElementById('mobile-menu');
-        const btn = document.getElementById('mobile-menu-btn');
-        menu.classList.toggle('hidden');
-        btn.innerHTML = menu.classList.contains('hidden') ? '<i class="fa-solid fa-bars"></i>' : '<i class="fa-solid fa-xmark"></i>';
+    function renderOrderSummary() {
+      const summaryEl = document.getElementById('order-summary');
+      const subtotalEl = document.getElementById('subtotal');
+      const totalEl = document.getElementById('total');
+      if (!summaryEl || !subtotalEl || !totalEl) return;
+
+      const cart = getCart();
+      if (cart.length === 0) {
+        summaryEl.innerHTML = `<p class="text-gray-400">Your cart is empty. <a href="shop.html" class="text-yellow-400 hover:underline">Go shopping</a></p>`;
+        subtotalEl.textContent = '$0';
+        totalEl.textContent = '$0';
+        return;
       }
-    });
 
-    // Fake Order Data
-    function renderOrder() {
-      const items = [
-        {name: "Nike Air Force 1 '07", price: 129},
-        {name: "Jordan 1 Retro High", price: 189},
-        {name: "Adidas Samba OG", price: 95}
-      ];
       let html = '';
-      let total = 0;
+      let subtotal = 0;
 
-      items.forEach(item => {
-        total += item.price;
-        html += `<div class="flex justify-between py-2"><span>${item.name}</span><span>$${item.price}</span></div>`;
+      cart.forEach(item => {
+        const lineTotal = item.price * (item.quantity || 1);
+        subtotal += lineTotal;
+        const sizeLabel = item.size ? ` (US ${item.size})` : '';
+        html += `
+          <div class="flex justify-between py-1.5 text-sm">
+            <span class="truncate pr-2">${item.name}${sizeLabel} ×${item.quantity || 1}</span>
+            <span class="whitespace-nowrap">$${lineTotal}</span>
+          </div>
+        `;
       });
 
-      document.getElementById('order-summary').innerHTML = html;
-      document.getElementById('subtotal').textContent = '$' + total;
-      document.getElementById('total').textContent = '$' + total;
+      summaryEl.innerHTML = html;
+      subtotalEl.textContent = '$' + subtotal;
+      totalEl.textContent = '$' + subtotal;
     }
 
     function completeOrder() {
-      alert("✅ Thank you! Your order has been placed (Demo)");
+      const cart = getCart();
+      if (cart.length === 0) {
+        alert("Your cart is empty.");
+        return;
+      }
+      const total = getCartTotal();
+      // Demo: "place order"
+      alert(`✅ Thank you! Order placed for $${total} (Demo mode — cart cleared)`);
+      clearCart();
+      // Refresh the summary
+      renderOrderSummary();
+      // Badge will update on next navigation or we can force
+      setTimeout(updateCartCount, 50);
     }
 
-    window.onload = renderOrder;
+    window.onload = () => {
+      renderOrderSummary();
+    };
   </script>
 </body>
 </html>

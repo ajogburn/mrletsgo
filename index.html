@@ -6,6 +6,8 @@
   <title>Mr. LetsGo | Hype Sneakers</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="product.js"></script>
+  <script src="main.js"></script>
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
     .hero-bg {
@@ -30,31 +32,37 @@
     </div>
   </section>
 
-  <!-- FEATURED -->
+  <!-- FEATURED SNEAKERS -->
   <section class="py-20 bg-zinc-950">
     <div class="max-w-7xl mx-auto px-6">
       <h2 class="text-4xl font-bold text-center mb-12">Featured Sneakers</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <!-- Add more product cards here like in shop.html -->
-      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6" id="featured-grid"></div>
     </div>
   </section>
 
   <div id="footer-placeholder"></div>
 
   <script>
-    fetch('header.html').then(res => res.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
-    fetch('footer.html').then(res => res.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+    initCommonUI();
 
-    // Mobile menu logic
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('#mobile-menu-btn')) {
-        const menu = document.getElementById('mobile-menu');
-        const btn = document.getElementById('mobile-menu-btn');
-        menu.classList.toggle('hidden');
-        btn.innerHTML = menu.classList.contains('hidden') ? '<i class="fa-solid fa-bars"></i>' : '<i class="fa-solid fa-xmark"></i>';
-      }
-    });
+    function renderFeatured() {
+      const grid = document.getElementById('featured-grid');
+      if (!grid) return;
+      const items = getProducts().slice(0, 4);
+      grid.innerHTML = items.map(p => `
+        <a href="product.html?id=${p.id}" class="product-card bg-zinc-900 rounded-3xl overflow-hidden group">
+          <img src="${p.img}" 
+               onerror="this.src='https://via.placeholder.com/600x400/27272a/white?text=Image+Loading...'" 
+               class="w-full h-64 object-cover group-hover:scale-105 transition">
+          <div class="p-5">
+            <h3 class="font-semibold">${p.name}</h3>
+            <p class="text-yellow-400">$${p.price}</p>
+          </div>
+        </a>
+      `).join('');
+    }
+
+    window.onload = renderFeatured;
   </script>
 </body>
 </html>

@@ -3,59 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nike Air Force 1 '07 | Mr. LetsGo</title>
+  <title>Mr. LetsGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="product.js"></script>
+  <script src="main.js"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .product-img {
+      transition: all 0.4s ease;
+    }
+    .product-img:hover {
+      transform: scale(1.03);
+    }
+  </style>
 </head>
 <body class="bg-black text-white">
 
   <div id="header-placeholder"></div>
 
-  <div class="max-w-7xl mx-auto px-6 py-12">
-    <div class="grid md:grid-cols-2 gap-12">
-      <div>
-        <img id="main-image" src="https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa" class="w-full rounded-3xl">
-      </div>
-      <div>
-        <h1 class="text-4xl font-black">Nike Air Force 1 '07</h1>
-        <p class="text-yellow-400 text-3xl font-semibold mt-2">$129</p>
-
-        <div class="mt-8">
-          <h3 class="font-semibold mb-4">Size</h3>
-          <div class="grid grid-cols-6 gap-3">
-            <button class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400">8</button>
-            <button class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400">9</button>
-            <button class="size-btn border border-yellow-400 bg-zinc-900 py-4 rounded-2xl">10</button>
-            <button class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400">11</button>
-            <button class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400">12</button>
-          </div>
-        </div>
-
-        <button onclick="addToCart()" class="mt-10 w-full bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white">
-          ADD TO CART
-        </button>
-      </div>
-    </div>
+  <div class="max-w-7xl mx-auto px-6 py-12" id="product-content">
+    <p class="text-center text-gray-400">Loading product...</p>
   </div>
 
   <div id="footer-placeholder"></div>
 
   <script>
-    fetch('header.html').then(res => res.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
-    fetch('footer.html').then(res => res.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
+    initCommonUI();
 
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('#mobile-menu-btn')) {
-        const menu = document.getElementById('mobile-menu');
-        const btn = document.getElementById('mobile-menu-btn');
-        menu.classList.toggle('hidden');
-        btn.innerHTML = menu.classList.contains('hidden') ? '<i class="fa-solid fa-bars"></i>' : '<i class="fa-solid fa-xmark"></i>';
-      }
-    });
+    let currentSelectedSize = null;
 
-    function addToCart() {
-      alert("Added to cart!");
+    function getProductId() {
+      const params = new URLSearchParams(window.location.search);
+      return parseInt(params.get('id')) || 1;
     }
+
+    function renderProduct() {
+      const id = getProductId();
+      const product = getProducts().find(p => p.id === id) || getProducts()[0];
+      if (!product) return;
+
+      document.getElementById('product-content').innerHTML = `
+        <div class="grid md:grid-cols-2 gap-12">
+          <div>
+            <img src="${product.img}" 
+                 onerror="this.src='https://via.placeholder.com/600x600/18181b/ffffff?text=Image+Not+Available'" 
+                 class="product-img w-full rounded-3xl shadow-2xl">
+          </div>
+
+          <div>
+            <h1 class="text-4xl font-black">${product.name}</h1>
+            <p class="text-yellow-400 text-3xl font-semibold mt-3">$${product.price}</p>
+
+            <div class="mt-10">
+              <h3 class="font-semibold mb-4">Select Size (US)</h3>
+              <div class="grid grid-cols-6 gap-3">
+                ${[7,8,9,10,11,12].map(s => `
+                  <button onclick="selectSize(this)" class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400 transition">
+                    ${s}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <button onclick="addToCartFromProduct()" class="mt-12 w-full bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white">
+              ADD TO CART
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Pre-select a default size (US 10)
+      setTimeout(() => {
+        const btns = document.querySelectorAll('.size-btn');
+        if (btns.length) {
+          const preferred = Array.from(btns).find(b => b.textContent.trim() === '10') || btns[3];
+          if (preferred) {
+            preferred.classList.add('border-yellow-400', 'bg-zinc-900');
+            currentSelectedSize = preferred.textContent.trim();
+          }
+        }
+      }, 0);
+    }
+
+    function selectSize(el) {
+      document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('border-yellow-400', 'bg-zinc-900'));
+      el.classList.add('border-yellow-400', 'bg-zinc-900');
+      currentSelectedSize = el.textContent.trim();
+    }
+
+    function addToCartFromProduct() {
+      const id = getProductId();
+      const ok = addToCart(id, currentSelectedSize);
+      if (ok) {
+        // Quick visual feedback on the button
+        const btns = document.querySelectorAll('button');
+        const addBtn = Array.from(btns).find(b => b.textContent.includes('ADD TO CART'));
+        if (addBtn) {
+          const orig = addBtn.textContent;
+          addBtn.textContent = 'ADDED!';
+          addBtn.disabled = true;
+          setTimeout(() => {
+            addBtn.textContent = orig;
+            addBtn.disabled = false;
+          }, 1200);
+        }
+      }
+    }
+
+    window.onload = renderProduct;
   </script>
 </body>
 </html>

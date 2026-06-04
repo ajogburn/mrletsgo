@@ -6,10 +6,15 @@
   <title>Shop | Mr. LetsGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="product.js"></script>
+  <script src="main.js"></script>
   <style>
     body { font-family: 'Inter', system-ui, sans-serif; }
     .product-card { transition: all 0.3s ease; }
     .product-card:hover { transform: translateY(-8px); }
+    .product-img {
+      transition: all 0.4s ease;
+    }
   </style>
 </head>
 <body class="bg-black text-white">
@@ -19,57 +24,31 @@
   <div class="bg-zinc-900 py-12 border-b border-zinc-800">
     <div class="max-w-7xl mx-auto px-6">
       <h1 class="text-5xl font-black tracking-tighter">SHOP ALL</h1>
-      <p class="text-gray-400 mt-2">248 Premium Sneakers</p>
+      <p class="text-gray-400 mt-2">High Quality Batch Sneakers</p>
     </div>
   </div>
 
-  <div class="max-w-7xl mx-auto px-6 py-10 flex gap-8">
-    <!-- Filters -->
-    <div class="w-64 hidden lg:block">
-      <h3 class="font-semibold mb-6">Filters</h3>
-      <!-- Add your filters here (Brand, Price, Size) -->
-    </div>
-
-    <!-- Products -->
-    <div class="flex-1">
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="product-grid"></div>
-    </div>
+  <div class="max-w-7xl mx-auto px-6 py-10">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="product-grid"></div>
   </div>
 
   <div id="footer-placeholder"></div>
 
   <script>
-    fetch('header.html').then(res => res.text()).then(data => document.getElementById('header-placeholder').innerHTML = data);
-    fetch('footer.html').then(res => res.text()).then(data => document.getElementById('footer-placeholder').innerHTML = data);
-
-    // Mobile Menu
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('#mobile-menu-btn')) {
-        const menu = document.getElementById('mobile-menu');
-        const btn = document.getElementById('mobile-menu-btn');
-        menu.classList.toggle('hidden');
-        btn.innerHTML = menu.classList.contains('hidden') ? '<i class="fa-solid fa-bars"></i>' : '<i class="fa-solid fa-xmark"></i>';
-      }
-    });
-
-    // Sample Products
-    const products = [
-      { name: "Nike Air Force 1 '07", price: 129, img: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa" },
-      { name: "Jordan 1 Retro High", price: 189, img: "https://images.unsplash.com/photo-1551107696-a4b0c5a0d9a2" },
-      { name: "Yeezy Boost 350", price: 239, img: "https://images.unsplash.com/photo-1620799140402-edc5749fe814" },
-      { name: "New Balance 550", price: 115, img: "https://images.unsplash.com/photo-1600585154340-be6161a56a9c" },
-      { name: "Nike Dunk Low", price: 109, img: "https://images.unsplash.com/photo-1549298916-b41d501d3772" },
-      { name: "Jordan 4 Retro", price: 210, img: "https://images.unsplash.com/photo-1600185365483-26d7a16503c6" },
-    ];
+    initCommonUI();
 
     function renderProducts() {
       const grid = document.getElementById('product-grid');
-      grid.innerHTML = products.map(p => `
-        <a href="product.html" class="product-card bg-zinc-900 rounded-3xl overflow-hidden group">
-          <img src="${p.img}" class="w-full h-64 object-cover group-hover:scale-105 transition">
+      if (!grid) return;
+      const items = getProducts();
+      grid.innerHTML = items.map(p => `
+        <a href="product.html?id=${p.id}" class="product-card bg-zinc-900 rounded-3xl overflow-hidden group">
+          <img src="${p.img}" 
+               onerror="this.src='https://via.placeholder.com/600x400/27272a/white?text=Image+Loading...'" 
+               class="product-img w-full h-64 object-cover group-hover:scale-105 transition">
           <div class="p-5">
-            <h3 class="font-semibold">${p.name}</h3>
-            <p class="text-yellow-400">$${p.price}</p>
+            <h3 class="font-semibold text-sm leading-tight">${p.name}</h3>
+            <p class="text-yellow-400 font-medium mt-2">$${p.price}</p>
           </div>
         </a>
       `).join('');
