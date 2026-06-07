@@ -153,7 +153,11 @@
         <p class="text-gray-400 mb-6">Your account does not have administrator privileges. Admin rights are controlled in the database (profiles table → role column).</p>
         
         <div class="flex flex-col gap-3">
-          <a href="account.html" class="block bg-yellow-400 text-black font-bold py-3 rounded-2xl">Go to My Account</a>
+          <button onclick="recheckAdminRole()" 
+                  class="w-full bg-yellow-400 hover:bg-white text-black font-bold py-3 rounded-2xl">
+            Re-check my admin role (after DB update)
+          </button>
+          <a href="account.html" class="block text-sm text-gray-400 hover:text-white">Go to My Account</a>
           <a href="index.html" class="block text-sm text-gray-400 hover:text-white">Back to store</a>
         </div>
         <p class="mt-6 text-xs text-gray-500">To grant admin access, run this in Supabase SQL:<br>
@@ -164,6 +168,7 @@
   </div>
 
   <script src="supabase.js"></script>
+  <script src="main.js"></script>
   <script>
     const client = window.supabaseClient;
 
@@ -237,14 +242,75 @@
       checkAdminRoleAndShowUI(user);
     }
 
+    async function recheckAdminRole() {
+      const { data: { user } } = await client.auth.getUser();
+      if (user) {
+        // Hide denied, show loading state briefly
+        const denied = document.getElementById('access-denied');
+        if (denied) denied.classList.add('hidden');
+        document.getElementById('management-section').classList.add('hidden');
+        await checkAdminRoleAndShowUI(user);
+      } else {
+        alert('You are not logged in.');
+      }
+    }
+
     async function checkAdminRoleAndShowUI(user) {
       const management = document.getElementById('management-section');
       const denied = document.getElementById('access-denied');
 
+      console.log('%c[Admin] Starting role check for:', 'color:#facc15', user?.email);
+
       try {
-        const isAdmin = await (window.isCurrentUserAdmin ? window.isCurrentUserAdmin() : Promise.resolve(false));
+        let isAdmin = false;
+        let profile = null;
+
+        // 1. Try the shared helper from main.js (now that we load main.js)
+        if (window.isCurrentUserAdmin) {
+          try {
+            isAdmin = await window.isCurrentUserAdmin();
+            console.log('[Admin] window.isCurrentUserAdmin() returned:', isAdmin);
+          } catch (e) {
+            console.warn('[Admin] Shared isCurrentUserAdmin helper failed, will do direct query.', e);
+          }
+        }
+
+        // 2. Always do a direct query using the authenticated client on this page (most reliable here)
+        try {
+          const { data: directProfile, error: directErr } = await client
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          profile = directProfile;
+
+          if (directErr) {
+            console.warn('[Admin] Direct profiles query error:', directErr.message);
+            // Common case: row doesn't exist yet for this user
+            if (directErr.code === 'PGRST116' || directErr.message.includes('no rows')) {
+              console.log('[Admin] No profile row found for this user. Attempting to create one with role=user...');
+              // Create a default profile (trigger should have done this, but for old users)
+              const { data: created } = await client
+                .from('profiles')
+                .insert({ id: user.id, email: user.email, role: 'user' })
+                .select()
+                .single();
+              profile = created;
+            }
+          }
+
+          if (profile) {
+            console.log('%c[Admin] Profile row from DB:', 'color:#4ade80', profile);
+            isAdmin = profile.role === 'admin';
+            console.log('[Admin] Role from profile:', profile.role, '→ isAdmin =', isAdmin);
+          }
+        } catch (directError) {
+          console.error('[Admin] Direct profile query completely failed:', directError);
+        }
 
         if (!isAdmin) {
+          console.warn('%c[Admin] Access DENIED. User is not admin according to profiles.role', 'color:#f87171', { email: user.email, profile });
           // Not an admin according to the profiles table in the database
           management.classList.add('hidden');
           if (denied) denied.classList.remove('hidden');
@@ -253,16 +319,20 @@
         }
 
         // User is admin → show normal management UI
+        console.log('%c[Admin] Access GRANTED — user has admin role', 'color:#4ade80');
         if (denied) denied.classList.add('hidden');
         management.classList.remove('hidden');
         document.getElementById('current-user').textContent = user.email;
 
         loadProductList();
-        loadAdminOrderOverview();   // new: show pending/filled counts + link
+        loadAdminOrderOverview();   // show pending/filled counts + link
       } catch (e) {
-        console.error('Admin role check failed', e);
-        // Fail safe: still allow if something goes wrong (you can tighten later)
+        console.error('Admin role check failed with unexpected error', e);
+        // Fail safe: still allow if something goes very wrong (you can tighten later)
+        // This helps during initial setup
+        if (denied) denied.classList.add('hidden');
         management.classList.remove('hidden');
+        document.getElementById('current-user').textContent = user.email;
         loadProductList();
       }
     }

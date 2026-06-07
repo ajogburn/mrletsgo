@@ -505,10 +505,16 @@ window.isFavorited = isFavorited;
 /** Fetch the current user's profile row (contains role) */
 async function getUserProfile() {
   const client = window.supabaseClient || window.getSupabase?.();
-  if (!client) return null;
+  if (!client) {
+    console.warn('getUserProfile: no Supabase client available');
+    return null;
+  }
 
   const userId = await getCurrentUserId();
-  if (!userId) return null;
+  if (!userId) {
+    console.warn('getUserProfile: no user id (not logged in)');
+    return null;
+  }
 
   try {
     const { data, error } = await client
@@ -518,19 +524,28 @@ async function getUserProfile() {
       .single();
 
     if (error) {
-      // Profile might not exist yet (old users before trigger)
-      console.warn('No profile row found for user, creating default...');
+      console.warn('[Profiles] SELECT failed for user', userId, error.message || error);
+      // Profile might not exist yet (old users created before the profiles table + trigger)
       const { data: { user } } = await client.auth.getUser();
-      const { data: newProfile } = await client
+      console.log('[Profiles] Attempting to create default profile row with role=user...');
+      const { data: newProfile, error: insertErr } = await client
         .from('profiles')
         .insert({ id: userId, email: user?.email || null, role: 'user' })
         .select()
         .single();
+
+      if (insertErr) {
+        console.error('[Profiles] Failed to create default profile:', insertErr);
+        return null;
+      }
+      console.log('[Profiles] Created default profile:', newProfile);
       return newProfile;
     }
+
+    console.log('[Profiles] Loaded profile for', data?.email, '→ role:', data?.role);
     return data;
   } catch (err) {
-    console.error('getUserProfile error:', err);
+    console.error('getUserProfile unexpected error:', err);
     return null;
   }
 }
@@ -538,7 +553,9 @@ async function getUserProfile() {
 /** Returns true if the currently logged-in user has role === 'admin' */
 async function isCurrentUserAdmin() {
   const profile = await getUserProfile();
-  return profile && profile.role === 'admin';
+  const result = !!(profile && profile.role === 'admin');
+  console.log('[isCurrentUserAdmin] result =', result, '(role =', profile?.role, ')');
+  return result;
 }
 
 /** Create a real order (call this from checkout when user is logged in) */
