@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin | Mr. LetsGo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-black text-white">
+
+  <div class="max-w-7xl mx-auto px-6 py-12">
+    <div class="flex justify-between items-center mb-10">
+      <h1 class="text-4xl font-black">Admin Dashboard</h1>
+      <button onclick="logout()" class="bg-red-600 px-6 py-3 rounded-2xl hover:bg-red-700">Logout</button>
+    </div>
+
+    <div class="bg-zinc-900 rounded-3xl p-8">
+      <h2 class="text-2xl font-bold mb-6">Add New Product</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <input id="name" placeholder="Product Name" class="bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4">
+        <input id="price" type="number" placeholder="Price" class="bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4">
+        <input id="img" placeholder="Image URL (medium.jpg)" class="bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 col-span-2">
+      </div>
+      <button onclick="addProduct()" class="mt-6 bg-yellow-400 text-black px-8 py-4 rounded-2xl font-bold">Add Product</button>
+    </div>
+
+    <div class="mt-12">
+      <h2 class="text-2xl font-bold mb-6">All Products</h2>
+      <div id="admin-products" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+    </div>
+  </div>
+
+  <script src="supabase.js"></script>
+  <script>
+    async function loadAdminProducts() {
+      const container = document.getElementById('admin-products');
+      const { data, error } = await window.supabaseClient.from('products').select('*').order('id');
+      
+      if (error) {
+        container.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+        return;
+      }
+
+      container.innerHTML = data.map(p => `
+        <div class="bg-zinc-900 rounded-3xl p-6 flex gap-6">
+          <img src="${p.img}" class="w-24 h-24 object-cover rounded-2xl">
+          <div class="flex-1">
+            <h3 class="font-semibold">${p.name}</h3>
+            <p class="text-yellow-400">$${p.price}</p>
+            <button onclick="deleteProduct(${p.id})" class="text-red-500 text-sm mt-4">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function addProduct() {
+      const name = document.getElementById('name').value;
+      const price = parseFloat(document.getElementById('price').value);
+      const img = document.getElementById('img').value;
+
+      if (!name || !price || !img) {
+        alert("Please fill all fields");
+        return;
+      }
+
+      const { error } = await window.supabaseClient.from('products').insert({ name, price, img });
+      
+      if (error) alert("Error: " + error.message);
+      else {
+        alert("Product added!");
+        document.getElementById('name').value = '';
+        document.getElementById('price').value = '';
+        document.getElementById('img').value = '';
+        loadAdminProducts();
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm("Delete this product?")) return;
+      
+      const { error } = await window.supabaseClient.from('products').delete().eq('id', id);
+      if (error) alert("Error deleting");
+      else loadAdminProducts();
+    }
+
+    function logout() {
+      alert("Demo - In real version this would log you out");
+    }
+
+    window.onload = loadAdminProducts;
+  </script>
+</body>
+</html>

@@ -6,15 +6,10 @@
   <title>Shop | Mr. LetsGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <script src="product.js"></script>
-  <script src="main.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
-    .product-card { transition: all 0.3s ease; }
-    .product-card:hover { transform: translateY(-8px); }
-    .product-img {
-      transition: all 0.4s ease;
-    }
+    .product-card { transition: all 0.4s ease; }
+    .product-card:hover { transform: translateY(-12px); }
   </style>
 </head>
 <body class="bg-black text-white">
@@ -24,37 +19,57 @@
   <div class="bg-zinc-900 py-12 border-b border-zinc-800">
     <div class="max-w-7xl mx-auto px-6">
       <h1 class="text-5xl font-black tracking-tighter">SHOP ALL</h1>
-      <p class="text-gray-400 mt-2">20 Premium Hype Sneakers • High Quality Batch</p>
+      <p class="text-gray-400 mt-2">High Quality Batch Sneakers</p>
     </div>
   </div>
 
   <div class="max-w-7xl mx-auto px-6 py-10">
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="product-grid"></div>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="product-grid">
+      <!-- Products loaded from Supabase -->
+    </div>
   </div>
 
   <div id="footer-placeholder"></div>
 
+  <script src="supabase.js"></script>
+  <script src="main.js"></script>
   <script>
-    initCommonUI();
-
-    function renderProducts() {
+    async function loadProducts() {
       const grid = document.getElementById('product-grid');
-      if (!grid) return;
-      const items = getProducts();
-      grid.innerHTML = items.map(p => `
-        <a href="product.html?id=${p.id}" class="product-card bg-zinc-900 rounded-3xl overflow-hidden group">
-          <img src="${p.img}" 
-               onerror="this.src='https://via.placeholder.com/600x400/27272a/white?text=Image+Loading...'" 
-               class="product-img w-full h-64 object-cover group-hover:scale-105 transition">
-          <div class="p-5">
-            <h3 class="font-semibold text-sm leading-tight">${p.name}</h3>
-            <p class="text-yellow-400 font-medium mt-2">$${p.price}</p>
-          </div>
-        </a>
-      `).join('');
+      grid.innerHTML = '<p class="col-span-full text-center text-gray-400">Loading products...</p>';
+
+      try {
+        const { data, error } = await window.supabaseClient
+          .from('products')
+          .select('*')
+          .order('id');
+
+        if (error) throw error;
+
+        if (data.length === 0) {
+          grid.innerHTML = '<p class="col-span-full text-center text-gray-400">No products found. Add some in Supabase.</p>';
+          return;
+        }
+
+        grid.innerHTML = data.map(p => `
+          <a href="product.html?id=${p.id}" class="product-card bg-zinc-900 rounded-3xl overflow-hidden group">
+            <img src="${p.img}" class="w-full h-64 object-cover group-hover:scale-105 transition">
+            <div class="p-5">
+              <h3 class="font-semibold">${p.name}</h3>
+              <p class="text-yellow-400 font-medium mt-1">$${p.price}</p>
+            </div>
+          </a>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+        grid.innerHTML = '<p class="col-span-full text-center text-red-400">Error loading products. Check console.</p>';
+      }
     }
 
-    window.onload = renderProducts;
+    window.onload = () => {
+      initCommonUI();
+      loadProducts();
+    };
   </script>
 </body>
 </html>

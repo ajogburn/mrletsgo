@@ -6,112 +6,79 @@
   <title>Mr. LetsGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <script src="product.js"></script>
-  <script src="main.js"></script>
-  <style>
-    body { font-family: 'Inter', system-ui, sans-serif; }
-    .product-img {
-      transition: all 0.4s ease;
-    }
-    .product-img:hover {
-      transform: scale(1.03);
-    }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-black text-white">
 
   <div id="header-placeholder"></div>
 
   <div class="max-w-7xl mx-auto px-6 py-12" id="product-content">
-    <p class="text-center text-gray-400">Loading product...</p>
+    <p class="text-center text-gray-400 py-20">Loading product...</p>
   </div>
 
   <div id="footer-placeholder"></div>
 
+  <script src="supabase.js"></script>
+  <script src="main.js"></script>
   <script>
-    initCommonUI();
-
-    let currentSelectedSize = null;
-
-    function getProductId() {
+    async function loadProduct() {
       const params = new URLSearchParams(window.location.search);
-      return parseInt(params.get('id')) || 1;
-    }
+      const id = parseInt(params.get('id'));
 
-    function renderProduct() {
-      const id = getProductId();
-      const product = getProducts().find(p => p.id === id) || getProducts()[0];
-      if (!product) return;
+      if (!id) {
+        document.getElementById('product-content').innerHTML = `<p class="text-red-400">Product not found.</p>`;
+        return;
+      }
 
-      document.getElementById('product-content').innerHTML = `
-        <div class="grid md:grid-cols-2 gap-12">
-          <div>
-            <img src="${product.img}" 
-                 onerror="this.src='https://via.placeholder.com/600x600/18181b/ffffff?text=Image+Not+Available'" 
-                 class="product-img w-full rounded-3xl shadow-2xl">
-          </div>
+      try {
+        const { data, error } = await window.supabaseClient
+          .from('products')
+          .select('*')
+          .eq('id', id)
+          .single();
 
-          <div>
-            <h1 class="text-4xl font-black">${product.name}</h1>
-            <p class="text-yellow-400 text-3xl font-semibold mt-3">$${product.price}</p>
+        if (error || !data) throw new Error("Product not found");
 
-            <div class="mt-10">
-              <h3 class="font-semibold mb-4">Select Size (US)</h3>
-              <div class="grid grid-cols-6 gap-3">
-                ${[7,8,9,10,11,12].map(s => `
-                  <button onclick="selectSize(this)" class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400 transition">
-                    ${s}
-                  </button>
-                `).join('')}
-              </div>
+        document.getElementById('product-content').innerHTML = `
+          <div class="grid md:grid-cols-2 gap-12">
+            <div>
+              <img src="${data.img}" class="w-full rounded-3xl" onerror="this.src='https://via.placeholder.com/600x600/27272a/ffffff?text=Image+Not+Found'">
             </div>
+            <div>
+              <h1 class="text-4xl font-black">${data.name}</h1>
+              <p class="text-yellow-400 text-3xl font-semibold mt-3">$${data.price}</p>
 
-            <button onclick="addToCartFromProduct()" class="mt-12 w-full bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white">
-              ADD TO CART
-            </button>
+              <div class="mt-10">
+                <h3 class="font-semibold mb-4">Select Size (US)</h3>
+                <div class="grid grid-cols-6 gap-3">
+                  ${[7,8,9,10,11,12].map(size => `
+                    <button onclick="selectSize(this)" class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400 transition">${size}</button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <button onclick="addToCart(${data.id})" 
+                class="mt-12 w-full bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white transition">
+                ADD TO CART
+              </button>
+            </div>
           </div>
-        </div>
-      `;
-
-      // Pre-select a default size (US 10)
-      setTimeout(() => {
-        const btns = document.querySelectorAll('.size-btn');
-        if (btns.length) {
-          const preferred = Array.from(btns).find(b => b.textContent.trim() === '10') || btns[3];
-          if (preferred) {
-            preferred.classList.add('border-yellow-400', 'bg-zinc-900');
-            currentSelectedSize = preferred.textContent.trim();
-          }
-        }
-      }, 0);
+        `;
+      } catch (err) {
+        console.error(err);
+        document.getElementById('product-content').innerHTML = `<p class="text-red-400">Failed to load product.</p>`;
+      }
     }
 
     function selectSize(el) {
       document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('border-yellow-400', 'bg-zinc-900'));
       el.classList.add('border-yellow-400', 'bg-zinc-900');
-      currentSelectedSize = el.textContent.trim();
     }
 
-    function addToCartFromProduct() {
-      const id = getProductId();
-      const ok = addToCart(id, currentSelectedSize);
-      if (ok) {
-        // Quick visual feedback on the button
-        const btns = document.querySelectorAll('button');
-        const addBtn = Array.from(btns).find(b => b.textContent.includes('ADD TO CART'));
-        if (addBtn) {
-          const orig = addBtn.textContent;
-          addBtn.textContent = 'ADDED!';
-          addBtn.disabled = true;
-          setTimeout(() => {
-            addBtn.textContent = orig;
-            addBtn.disabled = false;
-          }, 1200);
-        }
-      }
-    }
-
-    window.onload = renderProduct;
+    window.onload = () => {
+      initCommonUI();
+      loadProduct();
+    };
   </script>
 </body>
 </html>
