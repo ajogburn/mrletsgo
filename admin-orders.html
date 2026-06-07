@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders | Admin • Mr. LetsGo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-black text-white">
+  <div class="max-w-7xl mx-auto px-6 py-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-4xl font-black tracking-tighter">Order Management</h1>
+        <p class="text-gray-400">View and update all customer orders</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="admin.html" class="text-sm px-4 py-2 rounded-xl border border-zinc-700 hover:bg-zinc-900">← Back to Admin</a>
+        <a href="index.html" class="text-sm text-gray-400 hover:text-white">Store</a>
+      </div>
+    </div>
+
+    <!-- Status Tabs -->
+    <div class="flex flex-wrap gap-2 mb-6 border-b border-zinc-800 pb-4">
+      <button data-status="pending" class="order-tab active px-5 py-2 rounded-2xl bg-yellow-400 text-black font-semibold">Pending</button>
+      <button data-status="filled" class="order-tab px-5 py-2 rounded-2xl hover:bg-zinc-800">Filled</button>
+      <button data-status="all" class="order-tab px-5 py-2 rounded-2xl hover:bg-zinc-800">All History</button>
+      <button data-status="cancelled" class="order-tab px-5 py-2 rounded-2xl hover:bg-zinc-800">Cancelled</button>
+    </div>
+
+    <!-- Orders List -->
+    <div id="orders-container">
+      <p class="text-gray-400">Loading orders...</p>
+    </div>
+
+    <!-- Order Detail Modal -->
+    <div id="order-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+      <div class="bg-zinc-900 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-auto">
+        <div class="p-6 border-b border-zinc-700 flex items-center justify-between sticky top-0 bg-zinc-900 z-10">
+          <h3 class="font-bold text-xl" id="modal-order-title">Order Details</h3>
+          <button onclick="closeOrderModal()" class="text-2xl leading-none text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <div class="p-6 space-y-6" id="modal-order-body">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="p-6 border-t border-zinc-700 sticky bottom-0 bg-zinc-900 flex gap-3">
+          <button onclick="closeOrderModal()" 
+                  class="flex-1 py-3 rounded-2xl border border-zinc-700">Close</button>
+          <button id="modal-mark-filled" 
+                  class="flex-1 py-3 rounded-2xl bg-green-500 hover:bg-green-600 font-semibold">Mark as Filled</button>
+          <button id="modal-mark-cancelled" 
+                  class="px-6 py-3 rounded-2xl border border-red-900 text-red-400 hover:bg-red-950">Cancel Order</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="supabase.js"></script>
+  <script src="main.js"></script>
+  <script>
+    const client = window.supabaseClient;
+    let allOrders = [];
+    let currentFilter = 'pending';
+    let currentModalOrderId = null;
+
+    async function initAdminOrders() {
+      // Protect the page: only admins allowed
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) {
+        window.location.href = 'admin.html';
+        return;
+      }
+
+      const isAdmin = await (window.isCurrentUserAdmin ? window.isCurrentUserAdmin() : Promise.resolve(false));
+      if (!isAdmin) {
+        document.body.innerHTML = `
+          <div class="max-w-md mx-auto mt-20 text-center">
+            <div class="bg-zinc-900 rounded-3xl p-10">
+              <i class="fa-solid fa-ban text-5xl text-red-500 mb-4"></i>
+              <h1 class="text-3xl font-bold mb-3">Admin Access Required</h1>
+              <p class="text-gray-400 mb-6">Your profile does not have the <code>admin</code> role in the database.</p>
+              <a href="admin.html" class="inline-block bg-yellow-400 text-black px-8 py-3 rounded-2xl font-bold">Back to Admin Login</a>
+            </div>
+          </div>`;
+        return;
+      }
+
+      // Load data
+      await loadAllOrders();
+
+      // Wire tabs
+      document.querySelectorAll('.order-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active', 'bg-yellow-400', 'text-black'));
+          tab.classList.add('active', 'bg-yellow-400', 'text-black');
+          currentFilter = tab.dataset.status;
+          renderOrders();
+        });
+      });
+
+      // Initial active tab
+      const pendingTab = document.querySelector('.order-tab[data-status="pending"]');
+      if (pendingTab) pendingTab.classList.add('active', 'bg-yellow-400', 'text-black');
+    }
+
+    async function loadAllOrders() {
+      const container = document.getElementById('orders-container');
+      container.innerHTML = '<p class="text-gray-400 py-8">Loading all orders...</p>';
+
+      allOrders = await (window.MrLetsGo.getAllOrders ? window.MrLetsGo.getAllOrders() : []);
+      renderOrders();
+    }
+
+    function renderOrders() {
+      const container = document.getElementById('orders-container');
+      let filtered = allOrders;
+
+      if (currentFilter === 'pending') {
+        filtered = allOrders.filter(o => (o.status || 'pending') === 'pending');
+      } else if (currentFilter === 'filled') {
+        filtered = allOrders.filter(o => o.status === 'filled');
+      } else if (currentFilter === 'cancelled') {
+        filtered = allOrders.filter(o => o.status === 'cancelled');
+      }
+      // 'all' shows everything
+
+      if (!filtered.length) {
+        container.innerHTML = `
+          <div class="bg-zinc-900 rounded-3xl p-10 text-center">
+            <i class="fa-solid fa-inbox text-4xl text-zinc-600 mb-3"></i>
+            <p class="text-gray-400">No ${currentFilter === 'all' ? '' : currentFilter} orders found.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(order => {
+        const date = new Date(order.created_at).toLocaleString();
+        const statusBadge = getStatusBadge(order.status);
+        const itemSummary = Array.isArray(order.items) 
+          ? `${order.items.length} item${order.items.length === 1 ? '' : 's'}` 
+          : '—';
+
+        return `
+          <div class="bg-zinc-900 rounded-3xl p-5 mb-4 flex flex-col md:flex-row md:items-center gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3">
+                <div class="font-bold text-lg">Order #${order.id}</div>
+                ${statusBadge}
+              </div>
+              <div class="text-sm text-gray-400 mt-0.5">${order.user_email || 'Guest'} • ${date}</div>
+              <div class="text-xs text-gray-500 mt-1">${itemSummary} • Total <span class="text-yellow-400 font-semibold">$${order.total}</span></div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button onclick="viewOrderDetails(${order.id})" 
+                      class="px-4 py-2 text-sm rounded-xl border border-zinc-700 hover:bg-zinc-800">
+                View Details
+              </button>
+              ${order.status !== 'filled' && order.status !== 'cancelled' ? `
+                <button onclick="quickMarkFilled(${order.id}, this)" 
+                        class="px-4 py-2 text-sm rounded-xl bg-green-600 hover:bg-green-500 font-semibold">
+                  Mark Filled
+                </button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getStatusBadge(status) {
+      const s = (status || 'pending').toLowerCase();
+      if (s === 'filled') return `<span class="text-xs px-3 py-0.5 rounded-full bg-green-500 text-black font-semibold">FILLED</span>`;
+      if (s === 'cancelled') return `<span class="text-xs px-3 py-0.5 rounded-full bg-red-500 text-white font-semibold">CANCELLED</span>`;
+      return `<span class="text-xs px-3 py-0.5 rounded-full bg-yellow-400 text-black font-semibold">PENDING</span>`;
+    }
+
+    async function viewOrderDetails(orderId) {
+      const order = allOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      currentModalOrderId = orderId;
+
+      const body = document.getElementById('modal-order-body');
+      const title = document.getElementById('modal-order-title');
+
+      title.textContent = `Order #${order.id} — $${order.total}`;
+
+      const itemsHtml = Array.isArray(order.items) ? order.items.map(item => `
+        <div class="flex justify-between py-1 text-sm border-b border-zinc-800 last:border-none">
+          <div class="flex-1 pr-4 truncate">${item.name} ${item.size ? `(US ${item.size})` : ''} ×${item.quantity || 1}</div>
+          <div class="font-medium">$${(item.price * (item.quantity || 1)).toFixed(2)}</div>
+        </div>
+      `).join('') : '<p class="text-gray-400">No items</p>';
+
+      const shipping = order.shipping || {};
+      const shipHtml = shipping && (shipping.firstName || shipping.address) ? `
+        <div class="bg-zinc-950 rounded-2xl p-4 text-sm">
+          <div class="font-semibold mb-1">Shipping Information</div>
+          <div>${shipping.firstName || ''} ${shipping.lastName || ''}</div>
+          <div class="text-gray-400">${shipping.email || order.user_email || ''}</div>
+          <div class="mt-1">${shipping.address || ''}</div>
+          <div>${shipping.city || ''}${shipping.state ? ', ' + shipping.state : ''} ${shipping.zip || ''}</div>
+        </div>` : `<div class="text-gray-400 text-sm">No shipping details recorded.</div>`;
+
+      body.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-6">
+          <div>
+            <div class="text-xs uppercase tracking-widest text-gray-400 mb-1">Customer</div>
+            <div class="font-medium">${order.user_email || 'Unknown'}</div>
+            <div class="text-xs text-gray-500">User ID: ${order.user_id || '—'}</div>
+
+            <div class="mt-6">
+              <div class="text-xs uppercase tracking-widest text-gray-400 mb-1">Order Date</div>
+              <div>${new Date(order.created_at).toLocaleString()}</div>
+            </div>
+
+            <div class="mt-6">
+              <div class="text-xs uppercase tracking-widest text-gray-400 mb-1">Status</div>
+              <div class="mt-1">${getStatusBadge(order.status)}</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="text-xs uppercase tracking-widest text-gray-400 mb-2">Items</div>
+            <div class="bg-zinc-950 rounded-2xl p-4 max-h-48 overflow-auto">
+              ${itemsHtml}
+            </div>
+            <div class="flex justify-between font-bold mt-3 text-lg">
+              <span>Total</span>
+              <span class="text-yellow-400">$${order.total}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <div class="text-xs uppercase tracking-widest text-gray-400 mb-2">Shipping Address</div>
+          ${shipHtml}
+        </div>
+      `;
+
+      // Wire modal action buttons
+      const markFilled = document.getElementById('modal-mark-filled');
+      const markCancelled = document.getElementById('modal-mark-cancelled');
+
+      markFilled.onclick = async () => {
+        await changeStatusFromModal('filled');
+      };
+      markCancelled.onclick = async () => {
+        if (confirm('Cancel this order?')) {
+          await changeStatusFromModal('cancelled');
+        }
+      };
+
+      // Hide buttons for already terminal states
+      if (order.status === 'filled') {
+        markFilled.style.display = 'none';
+        markCancelled.style.display = 'none';
+      } else if (order.status === 'cancelled') {
+        markFilled.style.display = 'none';
+        markCancelled.style.display = 'none';
+      } else {
+        markFilled.style.display = '';
+        markCancelled.style.display = '';
+      }
+
+      document.getElementById('order-modal').classList.remove('hidden');
+    }
+
+    async function changeStatusFromModal(newStatus) {
+      if (!currentModalOrderId) return;
+
+      try {
+        await window.updateOrderStatus(currentModalOrderId, newStatus);
+
+        // Update local data
+        const idx = allOrders.findIndex(o => o.id === currentModalOrderId);
+        if (idx > -1) allOrders[idx].status = newStatus;
+
+        closeOrderModal();
+        renderOrders();
+
+        // Also refresh the small overview on the main admin page if open in another tab (best effort)
+      } catch (err) {
+        alert('Failed to update order: ' + err.message);
+      }
+    }
+
+    async function quickMarkFilled(orderId, btn) {
+      const originalText = btn.textContent;
+      btn.textContent = 'Updating...';
+      btn.disabled = true;
+
+      try {
+        await window.updateOrderStatus(orderId, 'filled');
+
+        const idx = allOrders.findIndex(o => o.id === orderId);
+        if (idx > -1) allOrders[idx].status = 'filled';
+
+        renderOrders();
+      } catch (err) {
+        alert('Update failed: ' + err.message);
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    function closeOrderModal() {
+      document.getElementById('order-modal').classList.add('hidden');
+      currentModalOrderId = null;
+    }
+
+    // Keyboard support for modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('order-modal');
+        if (!modal.classList.contains('hidden')) closeOrderModal();
+      }
+    });
+
+    // Init
+    window.onload = async () => {
+      await initAdminOrders();
+    };
+  </script>
+</body>
+</html>

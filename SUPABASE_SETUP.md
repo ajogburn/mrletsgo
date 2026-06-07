@@ -217,6 +217,164 @@ After running:
 You can use the same Supabase Auth users for both admin and customers. 
 - Use `admin.html` for store management (you can bookmark it or access directly).
 - Customers use the user icon in header → `account.html` (clean customer login + dashboard).
+
+---
+
+## 12. (NEW) Role-Based Admins + Real Orders (profiles + orders tables)
+
+This upgrade lets you:
+- Mark any user as admin **directly in the Supabase database** (no code changes).
+- Protect the admin area properly.
+- Show an "Admin Dashboard" option to admins even when they log in via the normal customer login.
+- Actually save customer orders (pending → filled) instead of just demo mode.
+
+### A. Create profiles table + auto-create on signup (recommended)
+
+Run this entire block in the **SQL Editor**:
+
+```sql
+-- 1. Create profiles table
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  role TEXT DEFAULT 'user',           -- 'user' or 'admin'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Enable RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Users can read their own profile
+DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
+CREATE POLICY "Users can view own profile"
+  ON profiles FOR SELECT
+  TO authenticated
+  USING (id = auth.uid());
+
+-- Users can update their own profile (except role - we'll handle role only via SQL or future admin policy)
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
+CREATE POLICY "Users can update own profile"
+  ON profiles FOR UPDATE
+  TO authenticated
+  USING (id = auth.uid())
+  WITH CHECK (id = auth.uid());
+
+-- IMPORTANT: Allow admins to read ALL profiles (so they can manage orders etc.)
+-- We will also allow admins to update roles later if needed.
+DROP POLICY IF EXISTS "Admins can view all profiles" ON profiles;
+CREATE POLICY "Admins can view all profiles"
+  ON profiles FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- 3. Auto-create profile + default 'user' role when someone signs up
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, role)
+  VALUES (NEW.id, NEW.email, 'user');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Drop old trigger if exists then create fresh
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+```
+
+After running, every new signup will automatically get a `profiles` row with `role = 'user'`.
+
+### B. Promote a user to Admin (do this in Supabase)
+
+Use the **SQL Editor** (replace with your email):
+
+```sql
+-- Make a user an admin (run this for yourself and any other admins)
+UPDATE profiles 
+SET role = 'admin' 
+WHERE email = 'your-admin-email@example.com';
+
+-- Verify
+SELECT id, email, role FROM profiles;
+```
+
+You can change roles anytime directly in the Table Editor (profiles table) or with UPDATE. This is the single source of truth.
+
+### C. Create the orders table (real order storage)
+
+```sql
+-- Orders table
+CREATE TABLE IF NOT EXISTS orders (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_email TEXT,                    -- denormalized for easy admin viewing
+  items JSONB NOT NULL,               -- snapshot of cart [{id, name, price, img, size, quantity}]
+  total NUMERIC(10,2) NOT NULL,
+  status TEXT DEFAULT 'pending',      -- 'pending' | 'filled' | 'cancelled'
+  shipping JSONB,                     -- {firstName, lastName, email, address, city, state, zip}
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+
+-- Enable RLS
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+
+-- Regular users can only see their own orders
+DROP POLICY IF EXISTS "Users can view own orders" ON orders;
+CREATE POLICY "Users can view own orders"
+  ON orders FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+-- Users can insert their own orders (during checkout)
+DROP POLICY IF EXISTS "Users can insert own orders" ON orders;
+CREATE POLICY "Users can insert own orders"
+  ON orders FOR INSERT
+  TO authenticated
+  WITH CHECK (user_id = auth.uid());
+
+-- Admins can view ALL orders
+DROP POLICY IF EXISTS "Admins can view all orders" ON orders;
+CREATE POLICY "Admins can view all orders"
+  ON orders FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+
+-- Admins can update any order (change status etc.)
+DROP POLICY IF EXISTS "Admins can update orders" ON orders;
+CREATE POLICY "Admins can update orders"
+  ON orders FOR UPDATE
+  TO authenticated
+  USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+```
+
+### D. After running the above
+
+- Go to your Supabase **Authentication → Users** and note your admin email.
+- Run the `UPDATE profiles SET role = 'admin' ...` command.
+- Hard refresh your site.
+- Log in via the normal user icon (`account.html`) — as an admin you will now see a "Go to Admin Dashboard" button.
+- The `admin.html` page will now reject non-admins.
+- When a logged-in customer completes checkout, the order is saved as "pending".
+- Use the new `admin-orders.html` page (linked from admin dashboard) to manage orders.
+
+You now control admin access 100% from the database.
+```
 - No need for separate "admin" users unless you add a profiles.role column later for extra security.
 ```
 

@@ -37,7 +37,7 @@
           Create account (first time setup)
         </button>
       </div>
-      <p class="text-center text-xs text-gray-500 mt-4">Only authorized accounts can manage the store.</p>
+      <p class="text-center text-xs text-gray-500 mt-4">Only authorized accounts can manage the store.<br>Admin privileges are controlled in the database (profiles table → role column).</p>
     </div>
 
     <!-- MANAGEMENT SECTION (hidden until logged in) -->
@@ -102,6 +102,33 @@
         </div>
       </div>
 
+      <!-- Orders Overview (quick view for admins) -->
+      <div class="bg-zinc-900 rounded-3xl p-8 mb-8">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-bold">Orders Overview</h2>
+          <a href="admin-orders.html" 
+             class="text-sm px-4 py-2 rounded-xl bg-yellow-400 text-black font-semibold hover:bg-white">
+            Manage All Orders →
+          </a>
+        </div>
+
+        <div id="admin-order-overview" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-zinc-950 rounded-2xl p-4">
+            <div class="text-xs text-gray-400">Pending</div>
+            <div id="admin-pending-count" class="text-4xl font-black text-yellow-400">—</div>
+          </div>
+          <div class="bg-zinc-950 rounded-2xl p-4">
+            <div class="text-xs text-gray-400">Filled</div>
+            <div id="admin-filled-count" class="text-4xl font-black text-green-400">—</div>
+          </div>
+          <div class="bg-zinc-950 rounded-2xl p-4">
+            <div class="text-xs text-gray-400">Total Orders</div>
+            <div id="admin-total-orders" class="text-4xl font-black">—</div>
+          </div>
+        </div>
+        <p class="text-[10px] text-gray-500 mt-3">Full order management, status changes, and customer details are on the dedicated orders page.</p>
+      </div>
+
       <!-- Current Products -->
       <div class="bg-zinc-900 rounded-3xl p-8">
         <div class="flex items-center justify-between mb-6">
@@ -116,6 +143,23 @@
       </div>
 
       <div id="admin-message" class="mt-6 text-center text-sm"></div>
+    </div>
+
+    <!-- ACCESS DENIED (shown to logged-in non-admins) -->
+    <div id="access-denied" class="hidden max-w-md mx-auto mt-8">
+      <div class="bg-zinc-900 rounded-3xl p-8 text-center border border-red-900/50">
+        <i class="fa-solid fa-ban text-4xl text-red-500 mb-4"></i>
+        <h3 class="text-2xl font-bold mb-2">Access Denied</h3>
+        <p class="text-gray-400 mb-6">Your account does not have administrator privileges. Admin rights are controlled in the database (profiles table → role column).</p>
+        
+        <div class="flex flex-col gap-3">
+          <a href="account.html" class="block bg-yellow-400 text-black font-bold py-3 rounded-2xl">Go to My Account</a>
+          <a href="index.html" class="block text-sm text-gray-400 hover:text-white">Back to store</a>
+        </div>
+        <p class="mt-6 text-xs text-gray-500">To grant admin access, run this in Supabase SQL:<br>
+          <code class="text-[10px] bg-black px-1 py-0.5 rounded">UPDATE profiles SET role = 'admin' WHERE email = 'you@example.com';</code>
+        </p>
+      </div>
     </div>
   </div>
 
@@ -189,9 +233,38 @@
 
     function showManagementUI(user) {
       document.getElementById('login-section').classList.add('hidden');
-      document.getElementById('management-section').classList.remove('hidden');
-      document.getElementById('current-user').textContent = user.email;
-      loadProductList();
+      // We will decide below whether to show management or access denied
+      checkAdminRoleAndShowUI(user);
+    }
+
+    async function checkAdminRoleAndShowUI(user) {
+      const management = document.getElementById('management-section');
+      const denied = document.getElementById('access-denied');
+
+      try {
+        const isAdmin = await (window.isCurrentUserAdmin ? window.isCurrentUserAdmin() : Promise.resolve(false));
+
+        if (!isAdmin) {
+          // Not an admin according to the profiles table in the database
+          management.classList.add('hidden');
+          if (denied) denied.classList.remove('hidden');
+          document.getElementById('current-user').textContent = user.email;
+          return;
+        }
+
+        // User is admin → show normal management UI
+        if (denied) denied.classList.add('hidden');
+        management.classList.remove('hidden');
+        document.getElementById('current-user').textContent = user.email;
+
+        loadProductList();
+        loadAdminOrderOverview();   // new: show pending/filled counts + link
+      } catch (e) {
+        console.error('Admin role check failed', e);
+        // Fail safe: still allow if something goes wrong (you can tighten later)
+        management.classList.remove('hidden');
+        loadProductList();
+      }
     }
 
     async function handleLogin() {
@@ -253,6 +326,26 @@
     }
 
     // ---------- PRODUCT MANAGEMENT ----------
+    async function loadAdminOrderOverview() {
+      const pendingEl = document.getElementById('admin-pending-count');
+      const filledEl = document.getElementById('admin-filled-count');
+      const totalEl = document.getElementById('admin-total-orders');
+
+      try {
+        const orders = await (window.MrLetsGo.getAllOrders ? window.MrLetsGo.getAllOrders() : Promise.resolve([]));
+        const pending = orders.filter(o => (o.status || 'pending') === 'pending').length;
+        const filled = orders.filter(o => o.status === 'filled').length;
+
+        if (pendingEl) pendingEl.textContent = pending;
+        if (filledEl) filledEl.textContent = filled;
+        if (totalEl) totalEl.textContent = orders.length;
+      } catch (e) {
+        if (pendingEl) pendingEl.textContent = '0';
+        if (filledEl) filledEl.textContent = '0';
+        if (totalEl) totalEl.textContent = '0';
+      }
+    }
+
     async function loadProductList() {
       const container = document.getElementById('products-list');
       container.innerHTML = '<p class="text-gray-400">Loading products...</p>';

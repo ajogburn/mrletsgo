@@ -59,6 +59,29 @@
         </div>
       </div>
 
+      <!-- Admin Quick Access (only shown to users with role=admin in database) -->
+      <div id="admin-access-banner" class="hidden mb-8 bg-zinc-800 border border-yellow-400/50 rounded-3xl p-6">
+        <div class="flex flex-col md:flex-row md:items-center gap-4">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 text-yellow-400 font-semibold">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span>ADMIN ACCESS</span>
+            </div>
+            <p class="text-sm text-gray-300 mt-1">You have administrator privileges. Manage products, view all orders, and update order status from the admin area.</p>
+          </div>
+          <div class="flex gap-3">
+            <a href="admin.html" 
+               class="inline-block bg-yellow-400 hover:bg-white text-black font-bold px-6 py-3 rounded-2xl text-sm whitespace-nowrap">
+              Admin Dashboard
+            </a>
+            <a href="admin-orders.html" 
+               class="inline-block border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black font-bold px-6 py-3 rounded-2xl text-sm whitespace-nowrap">
+              Manage Orders
+            </a>
+          </div>
+        </div>
+      </div>
+
       <!-- Quick Stats -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div class="bg-zinc-900 rounded-3xl p-6">
@@ -70,9 +93,8 @@
           <div id="stat-cart" class="text-4xl font-black mt-1">0</div>
         </div>
         <div class="bg-zinc-900 rounded-3xl p-6">
-          <div class="text-sm text-gray-400">Orders</div>
-          <div class="text-4xl font-black mt-1 text-gray-500">—</div>
-          <div class="text-xs text-gray-500">Coming soon</div>
+          <div class="text-sm text-gray-400">My Orders</div>
+          <div id="stat-orders" class="text-4xl font-black mt-1">0</div>
         </div>
         <div class="bg-zinc-900 rounded-3xl p-6 flex flex-col justify-center">
           <a href="cart.html" class="inline-flex items-center gap-2 text-yellow-400 hover:text-white font-medium">
@@ -96,12 +118,22 @@
       </div>
 
       <!-- Recent Cart / Quick Actions -->
-      <div class="bg-zinc-900 rounded-3xl p-8">
+      <div class="bg-zinc-900 rounded-3xl p-8 mb-8">
         <h2 class="text-2xl font-bold mb-6">Your Cart</h2>
         <div id="dash-cart-preview"></div>
         <div class="mt-6">
           <a href="cart.html" class="inline-block bg-yellow-400 hover:bg-white text-black font-bold px-8 py-3 rounded-2xl">Go to Cart</a>
           <a href="shop.html" class="ml-3 text-sm text-gray-400 hover:text-white">Continue shopping</a>
+        </div>
+      </div>
+
+      <!-- My Orders (customer view) -->
+      <div class="bg-zinc-900 rounded-3xl p-8">
+        <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+          <i class="fa-solid fa-receipt"></i> My Orders
+        </h2>
+        <div id="my-orders-list">
+          <p class="text-gray-400">Loading your orders...</p>
         </div>
       </div>
 
@@ -128,6 +160,20 @@
       document.getElementById('dashboard-section').classList.remove('hidden');
       document.getElementById('dash-email').textContent = user.email || '';
       loadDashboardData();
+    }
+
+    async function showAdminAccessIfApplicable() {
+      const banner = document.getElementById('admin-access-banner');
+      if (!banner) return;
+
+      try {
+        const isAdmin = await (window.isCurrentUserAdmin ? window.isCurrentUserAdmin() : Promise.resolve(false));
+        if (isAdmin) {
+          banner.classList.remove('hidden');
+        }
+      } catch (e) {
+        // ignore
+      }
     }
 
     async function checkAuth() {
@@ -203,11 +249,22 @@
       const cart = window.getCart ? window.getCart() : [];
       document.getElementById('stat-cart').textContent = cart.reduce((s, i) => s + (i.quantity || 1), 0);
 
+      // My Orders count (real orders from DB)
+      const myOrders = await (window.MrLetsGo.getUserOrders ? window.MrLetsGo.getUserOrders() : Promise.resolve([]));
+      const ordersStat = document.getElementById('stat-orders');
+      if (ordersStat) ordersStat.textContent = myOrders.length;
+
       // Favorites grid
       renderFavorites(favs);
 
       // Cart preview
       renderCartPreview(cart);
+
+      // Show admin banner if this user is admin in the database
+      await showAdminAccessIfApplicable();
+
+      // Render customer's own orders
+      renderMyOrders(myOrders);
     }
 
     function renderFavorites(favs) {
@@ -325,6 +382,53 @@
           ${cart.length > 3 ? `<div class="text-xs text-gray-500 pl-1">+ ${cart.length - 3} more items</div>` : ''}
         </div>
       `;
+    }
+
+    function renderMyOrders(orders) {
+      const container = document.getElementById('my-orders-list');
+      if (!container) return;
+
+      if (!orders || orders.length === 0) {
+        container.innerHTML = `
+          <div class="text-gray-400">
+            You haven't placed any orders yet.
+            <a href="shop.html" class="text-yellow-400 hover:underline ml-1">Start shopping</a>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = orders.map(order => {
+        const date = new Date(order.created_at).toLocaleDateString();
+        const itemCount = Array.isArray(order.items) ? order.items.length : 0;
+        const statusColor = order.status === 'filled' ? 'bg-green-500' : 
+                           order.status === 'cancelled' ? 'bg-red-500' : 'bg-yellow-400 text-black';
+
+        return `
+          <div class="bg-zinc-950 rounded-2xl p-4 mb-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div class="font-semibold">Order #${order.id}</div>
+                <div class="text-xs text-gray-400">${date} • ${itemCount} item${itemCount === 1 ? '' : 's'}</div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-xs px-3 py-1 rounded-full ${statusColor} font-semibold">${(order.status || 'pending').toUpperCase()}</span>
+                <span class="font-bold text-yellow-400">$${order.total}</span>
+              </div>
+            </div>
+
+            ${order.items && order.items.length ? `
+              <div class="mt-3 text-xs text-gray-400 grid gap-1">
+                ${order.items.slice(0, 2).map(it => `
+                  <div class="flex justify-between">
+                    <span class="truncate">${it.name} ×${it.quantity || 1}</span>
+                    <span>$${(it.price * (it.quantity || 1)).toFixed(0)}</span>
+                  </div>
+                `).join('')}
+                ${order.items.length > 2 ? `<div class="text-gray-500">+ ${order.items.length - 2} more</div>` : ''}
+              </div>` : ''}
+          </div>
+        `;
+      }).join('');
     }
 
     // Init

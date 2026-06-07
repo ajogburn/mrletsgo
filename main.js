@@ -125,6 +125,8 @@ function initCommonUI() {
         updateCartCount(); // badge lives in header
         // Wire up search + ensure mobile menu still works for this injection
         setupHeaderInteractions();
+        // Role-aware: show Admin link in header if this user is an admin
+        injectAdminLinkIfAdmin();
       })
       .catch(() => {});
   }
@@ -263,6 +265,59 @@ async function renderSearchResults(query, container) {
       </a>
     `;
   }).join('');
+}
+
+// Inject "Admin" link in header (only for users with role=admin in profiles table)
+async function injectAdminLinkIfAdmin() {
+  try {
+    const isAdmin = await isCurrentUserAdmin();
+    if (!isAdmin) return;
+
+    // Find the right-side actions container (user icon + cart)
+    const header = document.querySelector('header');
+    if (!header) return;
+
+    const actions = header.querySelector('.flex.items-center.gap-5');
+    if (!actions) return;
+
+    // Avoid duplicates
+    if (header.querySelector('#admin-header-link')) return;
+
+    // Create a nice admin pill/button
+    const adminLink = document.createElement('a');
+    adminLink.id = 'admin-header-link';
+    adminLink.href = 'admin.html';
+    adminLink.className = 'hidden md:inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-xl border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black transition';
+    adminLink.innerHTML = `<i class="fa-solid fa-shield-halved mr-1.5"></i> ADMIN`;
+
+    // Insert it before the cart icon area (or at the end of actions)
+    // We'll put it right before the cart div
+    const cartDiv = actions.querySelector('div[onclick*="cart.html"]');
+    if (cartDiv) {
+      actions.insertBefore(adminLink, cartDiv);
+    } else {
+      actions.appendChild(adminLink);
+    }
+
+    // Also add a mobile-friendly version in the mobile menu if it exists
+    const mobileNav = document.getElementById('mobile-menu');
+    if (mobileNav) {
+      const mobileLink = document.createElement('a');
+      mobileLink.href = 'admin.html';
+      mobileLink.className = 'hover:text-yellow-400 flex items-center gap-2';
+      mobileLink.innerHTML = `<i class="fa-solid fa-shield-halved"></i> ADMIN DASHBOARD`;
+      // append near the end of mobile nav
+      const lastA = mobileNav.querySelector('nav a:last-child');
+      if (lastA && lastA.parentElement) {
+        lastA.parentElement.appendChild(mobileLink);
+      } else {
+        mobileNav.querySelector('nav')?.appendChild(mobileLink);
+      }
+    }
+  } catch (e) {
+    // silent fail - don't break header for normal users
+    console.warn('Could not inject admin header link:', e);
+  }
 }
 
 // Convenience: call after cart mutations if you want immediate feedback elsewhere
@@ -442,3 +497,151 @@ window.searchProducts = searchProducts;
 window.getAllBrands = getAllBrands;
 window.toggleFavorite = toggleFavorite;
 window.isFavorited = isFavorited;
+
+// ============================================
+// NEW: Role-based profiles + Real Orders
+// ============================================
+
+/** Fetch the current user's profile row (contains role) */
+async function getUserProfile() {
+  const client = window.supabaseClient || window.getSupabase?.();
+  if (!client) return null;
+
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
+
+  try {
+    const { data, error } = await client
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      // Profile might not exist yet (old users before trigger)
+      console.warn('No profile row found for user, creating default...');
+      const { data: { user } } = await client.auth.getUser();
+      const { data: newProfile } = await client
+        .from('profiles')
+        .insert({ id: userId, email: user?.email || null, role: 'user' })
+        .select()
+        .single();
+      return newProfile;
+    }
+    return data;
+  } catch (err) {
+    console.error('getUserProfile error:', err);
+    return null;
+  }
+}
+
+/** Returns true if the currently logged-in user has role === 'admin' */
+async function isCurrentUserAdmin() {
+  const profile = await getUserProfile();
+  return profile && profile.role === 'admin';
+}
+
+/** Create a real order (call this from checkout when user is logged in) */
+async function createOrder({ items, total, shipping = null }) {
+  const client = window.supabaseClient || window.getSupabase?.();
+  if (!client) throw new Error('Not connected to Supabase');
+
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error('You must be logged in to place an order');
+
+  // Get email for denormalized storage (helps admin view)
+  const { data: { user } } = await client.auth.getUser();
+
+  const payload = {
+    user_id: userId,
+    user_email: user?.email || null,
+    items: items || [],
+    total: total || 0,
+    status: 'pending',
+    shipping: shipping || null
+  };
+
+  const { data, error } = await client
+    .from('orders')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/** Get orders for the currently logged-in user (customer view) */
+async function getUserOrders() {
+  const client = window.supabaseClient || window.getSupabase?.();
+  if (!client) return [];
+
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
+  try {
+    const { data, error } = await client
+      .from('orders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('getUserOrders error:', err);
+    return [];
+  }
+}
+
+/** Get ALL orders (admin only - RLS will enforce) */
+async function getAllOrders() {
+  const client = window.supabaseClient || window.getSupabase?.();
+  if (!client) return [];
+
+  try {
+    const { data, error } = await client
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('getAllOrders error:', err);
+    return [];
+  }
+}
+
+/** Update order status (admin action) */
+async function updateOrderStatus(orderId, status) {
+  const client = window.supabaseClient || window.getSupabase?.();
+  if (!client) throw new Error('Not connected');
+
+  const { data, error } = await client
+    .from('orders')
+    .update({ status })
+    .eq('id', orderId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Expose everything
+Object.assign(window.MrLetsGo, {
+  getUserProfile,
+  isCurrentUserAdmin,
+  createOrder,
+  getUserOrders,
+  getAllOrders,
+  updateOrderStatus
+});
+
+window.getUserProfile = getUserProfile;
+window.isCurrentUserAdmin = isCurrentUserAdmin;
+window.createOrder = createOrder;
+window.getUserOrders = getUserOrders;
+window.getAllOrders = getAllOrders;
+window.updateOrderStatus = updateOrderStatus;
