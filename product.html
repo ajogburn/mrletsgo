@@ -59,14 +59,46 @@
     }
 
     function renderProduct(data) {
+      const images = (window.getProductImages ? window.getProductImages(data) : [data.img]).filter(Boolean);
+      const mainImg = images[0] || data.img;
+
+      const thumbs = images.length > 1 ? `
+        <div class="flex gap-3 mt-3 overflow-x-auto pb-1">
+          ${images.map((url, i) => `
+            <img src="${url}" onclick="switchMainImage(this, '${url.replace(/'/g, "\\'")}')"
+                 class="thumb-img w-16 h-16 object-cover rounded-2xl cursor-pointer border ${i===0 ? 'border-yellow-400' : 'border-transparent'} hover:border-zinc-600"
+                 onerror="this.style.display='none'">
+          `).join('')}
+        </div>` : '';
+
+      const brandLine = data.brand ? `<div class="text-sm text-gray-400 mt-1">${data.brand}</div>` : '';
+      const badges = [];
+      if (data.is_new_drop) badges.push('<span class="text-xs px-3 py-1 rounded-full bg-emerald-500 text-black font-semibold">NEW DROP</span>');
+      if (data.is_featured) badges.push('<span class="text-xs px-3 py-1 rounded-full bg-yellow-400 text-black font-semibold">FEATURED</span>');
+
       document.getElementById('product-content').innerHTML = `
         <div class="grid md:grid-cols-2 gap-12">
+          <!-- Images -->
           <div>
-            <img src="${data.img}" class="w-full rounded-3xl" 
-                 onerror="this.src='https://via.placeholder.com/600x600/27272a/ffffff?text=Image+Not+Found'">
+            <div class="relative">
+              <img id="main-product-image" src="${mainImg}" class="w-full rounded-3xl" 
+                   onerror="this.src='https://via.placeholder.com/600x600/27272a/ffffff?text=Image+Not+Found'">
+              <!-- Favorite heart -->
+              <button id="fav-heart-btn" 
+                      class="absolute top-4 right-4 w-11 h-11 flex items-center justify-center rounded-full bg-black/70 hover:bg-black text-2xl transition">
+                <i class="fa-solid fa-heart text-white/70"></i>
+              </button>
+            </div>
+            ${thumbs}
           </div>
+
+          <!-- Info -->
           <div>
-            <h1 class="text-4xl font-black">${data.name}</h1>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-4xl font-black">${data.name}</h1>
+              ${badges.map(b => `<span>${b}</span>`).join('')}
+            </div>
+            ${brandLine}
             <p class="text-yellow-400 text-3xl font-semibold mt-3">$${data.price}</p>
 
             <div class="mt-10">
@@ -79,13 +111,64 @@
               </div>
             </div>
 
-            <button onclick="handleAddToCart()" 
-              class="mt-12 w-full bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white transition">
-              ADD TO CART
-            </button>
+            <div class="flex gap-3 mt-12">
+              <button onclick="handleAddToCart()" 
+                class="flex-1 bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white transition">
+                ADD TO CART
+              </button>
+              <button id="fav-text-btn"
+                class="px-6 py-6 rounded-2xl border border-zinc-700 hover:bg-zinc-900 text-sm font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-heart"></i> <span>FAVORITE</span>
+              </button>
+            </div>
+
+            <div class="mt-8 text-xs text-gray-400">
+              Free shipping on all orders • 30 day returns
+            </div>
           </div>
         </div>
       `;
+
+      // Wire favorite buttons after render
+      setTimeout(() => wireFavoriteUI(data.id), 0);
+    }
+
+    function switchMainImage(thumbEl, url) {
+      const main = document.getElementById('main-product-image');
+      if (main) main.src = url;
+      // highlight active thumb
+      document.querySelectorAll('.thumb-img').forEach(t => t.classList.remove('border-yellow-400'));
+      thumbEl.classList.add('border-yellow-400');
+    }
+
+    async function wireFavoriteUI(productId) {
+      const heartBtn = document.getElementById('fav-heart-btn');
+      const textBtn = document.getElementById('fav-text-btn');
+
+      async function refreshHeart() {
+        const fav = await window.isFavorited(productId);
+        const icon = heartBtn ? heartBtn.querySelector('i') : null;
+        if (icon) {
+          if (fav) icon.classList.add('text-red-500');
+          else icon.classList.remove('text-red-500');
+        }
+        if (textBtn) {
+          textBtn.innerHTML = fav 
+            ? '<i class="fa-solid fa-heart text-red-500"></i> <span>FAVORITED</span>'
+            : '<i class="fa-solid fa-heart"></i> <span>FAVORITE</span>';
+        }
+      }
+
+      await refreshHeart();
+
+      const doToggle = async (e) => {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        await window.toggleFavorite(productId);
+        await refreshHeart();
+      };
+
+      if (heartBtn) heartBtn.addEventListener('click', doToggle);
+      if (textBtn) textBtn.addEventListener('click', doToggle);
     }
 
     function selectSize(el, size) {

@@ -137,3 +137,99 @@ After this your shop will have the full catalog and you can still add/edit/delet
 - Still seeing old static products → Make sure you don't have a browser-cached version of product.js being loaded on that page.
 
 You're good to go after the SQL + user creation above.
+
+---
+
+## 9. (NEW) Multi-image, Brands, New Drops, Featured + Customer Favorites (2026 updates)
+
+Run this in **SQL Editor** to add support for:
+
+- Multiple images per product
+- Brand tagging + filtering
+- Admin-controlled "Featured Sneakers" and "New Drops" sections
+- Customer favorites / wishlist (requires logged-in users)
+
+```sql
+-- 1. Extend products table
+ALTER TABLE products 
+  ADD COLUMN IF NOT EXISTS brand TEXT,
+  ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS is_new_drop BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+
+-- Helpful index for brand filtering
+CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand);
+CREATE INDEX IF NOT EXISTS idx_products_is_featured ON products(is_featured);
+CREATE INDEX IF NOT EXISTS idx_products_is_new_drop ON products(is_new_drop);
+
+-- 2. Create favorites table (for customer wishlists)
+CREATE TABLE IF NOT EXISTS favorites (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, product_id)
+);
+
+-- 3. Enable RLS on favorites
+ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
+
+-- Users can only see/manage their own favorites
+DROP POLICY IF EXISTS "Users can view own favorites" ON favorites;
+CREATE POLICY "Users can view own favorites"
+  ON favorites FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can insert own favorites" ON favorites;
+CREATE POLICY "Users can insert own favorites"
+  ON favorites FOR INSERT
+  TO authenticated
+  WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can delete own favorites" ON favorites;
+CREATE POLICY "Users can delete own favorites"
+  ON favorites FOR DELETE
+  TO authenticated
+  USING (user_id = auth.uid());
+
+-- 4. (Optional but recommended) Backfill some brands + flags on existing products
+-- Example (run/adapt as needed):
+UPDATE products SET brand = 'Jordan' WHERE name ILIKE '%jordan%' AND brand IS NULL;
+UPDATE products SET brand = 'Nike' WHERE (name ILIKE '%nike%' OR name ILIKE '%kobe%' OR name ILIKE '%air max%') AND brand IS NULL;
+UPDATE products SET brand = 'Balenciaga' WHERE name ILIKE '%balenciaga%' AND brand IS NULL;
+UPDATE products SET brand = 'New Balance' WHERE name ILIKE '%new balance%' AND brand IS NULL;
+UPDATE products SET brand = 'Off-White' WHERE name ILIKE '%off-white%' OR name ILIKE '%off white%' AND brand IS NULL;
+
+-- Mark a few as featured / new drops (customize):
+UPDATE products SET is_featured = true WHERE id IN (1,2,3,4);
+UPDATE products SET is_new_drop = true WHERE id IN (1,5,9);
+```
+
+After running:
+
+- Existing products keep working (img still used as cover).
+- In Admin you can now set brand, add extra image URLs, toggle featured/new.
+- Customers can favorite products once logged into their Account dashboard.
+
+## 10. (Recommended) Create a customer-friendly user
+
+You can use the same Supabase Auth users for both admin and customers. 
+- Use `admin.html` for store management (you can bookmark it or access directly).
+- Customers use the user icon in header → `account.html` (clean customer login + dashboard).
+- No need for separate "admin" users unless you add a profiles.role column later for extra security.
+```
+
+## 11. Test the new features
+
+1. Run the ALTER + CREATE + UPDATE SQL above.
+2. Hard refresh the site.
+3. Go to Admin → add/edit a product: you should see Brand input, multiple image fields, Featured/New toggles.
+4. Visit homepage: you should see separate "New Drops" + "Featured Sneakers".
+5. Click the search icon (magnifying glass) in header — search modal should appear and filter live.
+6. Click user icon → customer login page (says "Account" or "My Account", not Admin).
+7. After logging in as customer: see Favorites section, be able to heart products from shop/product pages.
+8. Shop page: use filters for New Drops / brands.
+```
+
+

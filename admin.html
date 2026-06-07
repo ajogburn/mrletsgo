@@ -59,9 +59,38 @@
           <input id="name" placeholder="Product Name" class="bg-zinc-800 p-4 rounded-2xl">
           <input id="price" type="number" step="0.01" placeholder="Price (e.g. 220)" class="bg-zinc-800 p-4 rounded-2xl">
         </div>
-        <input id="img" placeholder="Image URL (https://...)" class="w-full bg-zinc-800 p-4 rounded-2xl mt-4 mb-6">
 
-        <div class="flex gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <input id="brand" placeholder="Brand (e.g. Jordan, Nike, New Balance)" class="bg-zinc-800 p-4 rounded-2xl">
+          <div class="flex items-center gap-6 bg-zinc-800 rounded-2xl px-4">
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input id="is_featured" type="checkbox" class="w-4 h-4 accent-yellow-400"> 
+              <span>Featured Sneakers</span>
+            </label>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <input id="is_new_drop" type="checkbox" class="w-4 h-4 accent-yellow-400"> 
+              <span>New Drop</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Primary / Cover Image -->
+        <div class="mt-4">
+          <label class="block text-xs uppercase tracking-widest text-gray-400 mb-1.5">Cover Image (main)</label>
+          <input id="img" placeholder="https://... (main product photo)" class="w-full bg-zinc-800 p-4 rounded-2xl">
+        </div>
+
+        <!-- Additional Images -->
+        <div class="mt-4">
+          <label class="block text-xs uppercase tracking-widest text-gray-400 mb-1.5">Additional Images</label>
+          <div id="extra-images-container" class="space-y-2"></div>
+          <button type="button" id="add-image-btn"
+                  class="mt-2 text-sm px-3 py-1.5 rounded-xl border border-zinc-700 hover:bg-zinc-800 flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> <span>Add another image URL</span>
+          </button>
+        </div>
+
+        <div class="flex gap-3 mt-6">
           <button id="submit-btn"
                   class="flex-1 bg-yellow-400 text-black font-bold py-4 rounded-2xl hover:bg-white">
             Add Product
@@ -95,6 +124,53 @@
     const client = window.supabaseClient;
 
     let editingId = null;
+    let extraImageInputs = []; // track extra image input elements
+
+    // --- Extra images (multi-image) helpers ---
+    function addExtraImageInput(value = '') {
+      const container = document.getElementById('extra-images-container');
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex gap-2';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'https://... additional image';
+      input.className = 'flex-1 bg-zinc-800 p-3 rounded-2xl text-sm';
+      input.value = value || '';
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'px-3 text-red-400 hover:text-red-500 border border-zinc-700 rounded-2xl';
+      removeBtn.innerHTML = '<i class="fa-solid fa-times"></i>';
+      removeBtn.onclick = () => {
+        wrapper.remove();
+        extraImageInputs = extraImageInputs.filter(el => el !== input);
+      };
+
+      wrapper.appendChild(input);
+      wrapper.appendChild(removeBtn);
+      container.appendChild(wrapper);
+
+      extraImageInputs.push(input);
+      return input;
+    }
+
+    function clearExtraImages() {
+      const container = document.getElementById('extra-images-container');
+      container.innerHTML = '';
+      extraImageInputs = [];
+    }
+
+    function getExtraImages() {
+      return extraImageInputs
+        .map(el => (el.value || '').trim())
+        .filter(Boolean);
+    }
+
+    function setExtraImages(urls) {
+      clearExtraImages();
+      (urls || []).forEach(u => addExtraImageInput(u));
+    }
 
     // ---------- AUTH ----------
     async function checkAuth() {
@@ -194,23 +270,49 @@
           return;
         }
 
-        container.innerHTML = data.map(p => `
-          <div class="flex gap-4 bg-zinc-950 rounded-2xl p-4 mb-3 items-center">
-            <img src="${p.img}" class="w-20 h-20 object-cover rounded-xl flex-shrink-0" 
-                 onerror="this.src='https://via.placeholder.com/80x80/27272a/fff?text=No+Img'">
-            <div class="flex-1 min-w-0">
-              <div class="font-semibold truncate">${p.name}</div>
-              <div class="text-yellow-400">$${p.price}</div>
-              <div class="text-xs text-gray-500">ID: ${p.id}</div>
-            </div>
-            <div class="flex gap-2 flex-shrink-0">
-              <button onclick="startEdit(${p.id}, '${escapeForAttr(p.name)}', ${p.price}, '${escapeForAttr(p.img)}')"
-                      class="px-4 py-2 text-sm rounded-xl border border-zinc-700 hover:bg-zinc-800">Edit</button>
-              <button onclick="deleteProduct(${p.id})"
-                      class="px-4 py-2 text-sm rounded-xl border border-red-900 text-red-400 hover:bg-red-950">Delete</button>
-            </div>
-          </div>
-        `).join('');
+        // Group by brand for nicer admin view
+        const grouped = {};
+        data.forEach(p => {
+          const b = p.brand || 'Other';
+          if (!grouped[b]) grouped[b] = [];
+          grouped[b].push(p);
+        });
+
+        let html = '';
+        Object.keys(grouped).sort().forEach(brand => {
+          html += `<div class="text-xs uppercase tracking-widest text-gray-400 mb-2 mt-4 first:mt-0">${brand}</div>`;
+          grouped[brand].forEach(p => {
+            const extraCount = (Array.isArray(p.images) ? p.images.length : 0);
+            const badges = [];
+            if (p.is_featured) badges.push('<span class="text-[10px] px-2 py-0.5 rounded bg-yellow-400 text-black font-semibold">FEATURED</span>');
+            if (p.is_new_drop) badges.push('<span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500 text-black font-semibold">NEW DROP</span>');
+            const imgCountBadge = extraCount > 0 ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700">${extraCount + 1} photos</span>` : '';
+
+            html += `
+              <div class="flex gap-4 bg-zinc-950 rounded-2xl p-4 mb-3 items-center">
+                <img src="${p.img}" class="w-16 h-16 object-cover rounded-xl flex-shrink-0" 
+                     onerror="this.src='https://via.placeholder.com/64x64/27272a/fff?text=No+Img'">
+                <div class="flex-1 min-w-0">
+                  <div class="font-semibold truncate">${p.name}</div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span class="text-yellow-400">$${p.price}</span>
+                    ${imgCountBadge}
+                    ${badges.join('')}
+                  </div>
+                  <div class="text-xs text-gray-500">ID: ${p.id}${p.brand ? ' • ' + p.brand : ''}</div>
+                </div>
+                <div class="flex gap-2 flex-shrink-0">
+                  <button onclick="startEditFromProduct(${p.id})"
+                          class="px-4 py-2 text-sm rounded-xl border border-zinc-700 hover:bg-zinc-800">Edit</button>
+                  <button onclick="deleteProduct(${p.id})"
+                          class="px-4 py-2 text-sm rounded-xl border border-red-900 text-red-400 hover:bg-red-950">Delete</button>
+                </div>
+              </div>
+            `;
+          });
+        });
+
+        container.innerHTML = html || '<p class="text-gray-400">No products yet.</p>';
       } catch (err) {
         console.error(err);
         container.innerHTML = `<p class="text-red-400">Failed to load products: ${err.message}</p>`;
@@ -222,25 +324,48 @@
       return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
-    function startEdit(id, name, price, img) {
-      editingId = id;
-      document.getElementById('name').value = name;
-      document.getElementById('price').value = price;
-      document.getElementById('img').value = img;
+    // New: startEdit that fetches full product (handles new columns + images)
+    async function startEditFromProduct(id) {
+      try {
+        const { data: p, error } = await client.from('products').select('*').eq('id', id).single();
+        if (error || !p) throw error || new Error('Not found');
 
-      document.getElementById('form-title').textContent = 'Edit Product';
-      document.getElementById('submit-btn').textContent = 'Update Product';
-      document.getElementById('cancel-edit-btn').classList.remove('hidden');
+        editingId = p.id;
+        document.getElementById('name').value = p.name || '';
+        document.getElementById('price').value = p.price || '';
+        document.getElementById('brand').value = p.brand || '';
+        document.getElementById('img').value = p.img || '';
+        document.getElementById('is_featured').checked = !!p.is_featured;
+        document.getElementById('is_new_drop').checked = !!p.is_new_drop;
 
-      // scroll to form
-      document.getElementById('name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // extra images
+        let extras = [];
+        if (Array.isArray(p.images)) extras = p.images;
+        else if (typeof p.images === 'string') { try { extras = JSON.parse(p.images) || []; } catch (_) {} }
+        setExtraImages(extras);
+
+        document.getElementById('form-title').textContent = 'Edit Product';
+        document.getElementById('submit-btn').textContent = 'Update Product';
+        document.getElementById('cancel-edit-btn').classList.remove('hidden');
+
+        document.getElementById('name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (e) {
+        alert('Failed to load product for editing: ' + e.message);
+      }
     }
+
+    // Back-compat in case old calls exist somewhere
+    window.startEdit = startEditFromProduct;
 
     function cancelEdit() {
       editingId = null;
       document.getElementById('name').value = '';
       document.getElementById('price').value = '';
+      document.getElementById('brand').value = '';
       document.getElementById('img').value = '';
+      document.getElementById('is_featured').checked = false;
+      document.getElementById('is_new_drop').checked = false;
+      clearExtraImages();
 
       document.getElementById('form-title').textContent = 'Add New Product';
       document.getElementById('submit-btn').textContent = 'Add Product';
@@ -250,29 +375,42 @@
     async function submitProduct() {
       const name = document.getElementById('name').value.trim();
       const price = parseFloat(document.getElementById('price').value);
+      const brand = document.getElementById('brand').value.trim() || null;
       const img = document.getElementById('img').value.trim();
+      const is_featured = document.getElementById('is_featured').checked;
+      const is_new_drop = document.getElementById('is_new_drop').checked;
       const msg = document.getElementById('admin-message');
 
+      const extraImages = getExtraImages();
+
       if (!name || !price || !img) {
-        msg.innerHTML = '<span class="text-red-400">Please fill all fields</span>';
+        msg.innerHTML = '<span class="text-red-400">Name, Price and Cover Image (img) are required.</span>';
         return;
       }
 
       msg.innerHTML = '<span class="text-gray-400">Saving...</span>';
 
+      const payload = {
+        name,
+        price,
+        brand,
+        img,
+        is_featured,
+        is_new_drop,
+        images: extraImages.length ? extraImages : []
+      };
+
       try {
         let error;
         if (editingId) {
-          // Update
           ({ error } = await client
             .from('products')
-            .update({ name, price, img })
+            .update(payload)
             .eq('id', editingId));
         } else {
-          // Insert
           ({ error } = await client
             .from('products')
-            .insert({ name, price, img }));
+            .insert(payload));
         }
 
         if (error) throw error;
@@ -281,8 +419,8 @@
         cancelEdit();
         await loadProductList();
 
-        // also refresh any global products cache
-        if (window.loadProductsFromSupabase) window.loadProductsFromSupabase();
+        // refresh global cache used by shop/home
+        if (window.loadProductsFromSupabase) await window.loadProductsFromSupabase();
 
         setTimeout(() => { msg.innerHTML = ''; }, 2500);
       } catch (err) {
@@ -329,6 +467,7 @@
       document.getElementById('submit-btn').addEventListener('click', submitProduct);
       document.getElementById('cancel-edit-btn').addEventListener('click', cancelEdit);
       document.getElementById('refresh-btn').addEventListener('click', loadProductList);
+      document.getElementById('add-image-btn').addEventListener('click', () => addExtraImageInput());
 
       // Check current auth state
       checkAuth();

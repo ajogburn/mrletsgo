@@ -5,15 +5,15 @@
     <nav class="hidden md:flex space-x-8 text-sm font-medium">
       <a href="index.html" class="hover:text-yellow-400 transition">HOME</a>
       <a href="shop.html" class="hover:text-yellow-400 transition">SHOP</a>
-      <a href="#" class="hover:text-yellow-400 transition">NEW DROPS</a>
-      <a href="#" class="hover:text-yellow-400 transition">BRANDS</a>
+      <a href="shop.html?new=true" class="hover:text-yellow-400 transition">NEW DROPS</a>
+      <a href="shop.html" class="hover:text-yellow-400 transition">BRANDS</a>
       <a href="about.html" class="hover:text-yellow-400 transition">ABOUT</a>
       <a href="contact.html" class="hover:text-yellow-400 transition">CONTACT</a>
     </nav>
 
     <div class="flex items-center gap-5">
-      <i class="fa-solid fa-magnifying-glass text-xl cursor-pointer hover:text-yellow-400"></i>
-      <a href="admin.html" title="Admin"><i class="fa-solid fa-user text-xl cursor-pointer hover:text-yellow-400"></i></a>
+      <i id="search-btn" class="fa-solid fa-magnifying-glass text-xl cursor-pointer hover:text-yellow-400" title="Search"></i>
+      <a href="account.html" title="My Account"><i class="fa-solid fa-user text-xl cursor-pointer hover:text-yellow-400"></i></a>
       <div onclick="window.location.href='cart.html'" class="relative cursor-pointer">
         <i class="fa-solid fa-bag-shopping text-xl hover:text-yellow-400"></i>
         <span id="cart-count" class="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">0</span>
@@ -30,8 +30,8 @@
     <nav class="flex flex-col space-y-8 text-2xl font-medium">
       <a href="index.html" class="hover:text-yellow-400">HOME</a>
       <a href="shop.html" class="hover:text-yellow-400">SHOP</a>
-      <a href="#" class="hover:text-yellow-400">NEW DROPS</a>
-      <a href="#" class="hover:text-yellow-400">BRANDS</a>
+      <a href="shop.html?new=true" class="hover:text-yellow-400">NEW DROPS</a>
+      <a href="shop.html" class="hover:text-yellow-400">BRANDS</a>
       <a href="about.html" class="hover:text-yellow-400">ABOUT</a>
       <a href="contact.html" class="hover:text-yellow-400">CONTACT</a>
     </nav>
