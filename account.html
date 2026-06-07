@@ -21,22 +21,76 @@
         </div>
 
         <div class="bg-zinc-900 rounded-3xl p-8">
-          <div id="auth-error" class="hidden mb-4 text-red-400 text-sm"></div>
+          <!-- Normal Login Form -->
+          <div id="login-form">
+            <div id="auth-error" class="hidden mb-4 text-red-400 text-sm"></div>
 
-          <input id="auth-email" type="email" placeholder="Email address" 
-                 class="w-full bg-zinc-800 p-4 rounded-2xl mb-3">
-          <input id="auth-password" type="password" placeholder="Password" 
-                 class="w-full bg-zinc-800 p-4 rounded-2xl mb-6">
+            <input id="auth-email" type="email" placeholder="Email address" 
+                   class="w-full bg-zinc-800 p-4 rounded-2xl mb-3">
+            <input id="auth-password" type="password" placeholder="Password" 
+                   class="w-full bg-zinc-800 p-4 rounded-2xl mb-6">
 
-          <button id="auth-login-btn"
-                  class="bg-yellow-400 hover:bg-white text-black font-bold py-4 w-full rounded-2xl mb-3 transition">
-            Sign In
-          </button>
+            <button id="auth-login-btn"
+                    class="bg-yellow-400 hover:bg-white text-black font-bold py-4 w-full rounded-2xl mb-3 transition">
+              Sign In
+            </button>
 
-          <button id="auth-signup-btn"
-                  class="w-full text-sm text-gray-400 hover:text-white py-2">
-            Create a new account
-          </button>
+            <div class="flex items-center justify-between text-sm">
+              <button id="auth-signup-btn"
+                      class="text-gray-400 hover:text-white py-1">
+                Create a new account
+              </button>
+              <button id="forgot-password-btn"
+                      class="text-gray-400 hover:text-white py-1">
+                Forgot password?
+              </button>
+            </div>
+          </div>
+
+          <!-- Forgot Password Form -->
+          <div id="forgot-form" class="hidden">
+            <div class="mb-4">
+              <h3 class="font-semibold mb-1">Reset your password</h3>
+              <p class="text-sm text-gray-400">Enter your email and we'll send you a link to reset your password.</p>
+            </div>
+
+            <div id="forgot-error" class="hidden mb-4 text-red-400 text-sm"></div>
+            <div id="forgot-success" class="hidden mb-4 text-green-400 text-sm"></div>
+
+            <input id="forgot-email" type="email" placeholder="Email address" 
+                   class="w-full bg-zinc-800 p-4 rounded-2xl mb-4">
+
+            <button id="send-reset-btn"
+                    class="bg-yellow-400 hover:bg-white text-black font-bold py-4 w-full rounded-2xl mb-3 transition">
+              Send reset link
+            </button>
+
+            <button id="back-to-login-btn"
+                    class="w-full text-sm text-gray-400 hover:text-white py-2">
+              ← Back to login
+            </button>
+          </div>
+
+          <!-- Password Recovery / Set New Password Form -->
+          <div id="recovery-form" class="hidden">
+            <div class="mb-4">
+              <h3 class="font-semibold mb-1">Set a new password</h3>
+              <p class="text-sm text-gray-400">Enter and confirm your new password below.</p>
+            </div>
+
+            <div id="recovery-error" class="hidden mb-4 text-red-400 text-sm"></div>
+            <div id="recovery-success" class="hidden mb-4 text-green-400 text-sm"></div>
+
+            <input id="recovery-password" type="password" placeholder="New password (min 6 characters)" 
+                   class="w-full bg-zinc-800 p-4 rounded-2xl mb-3">
+            <input id="recovery-password-confirm" type="password" placeholder="Confirm new password" 
+                   class="w-full bg-zinc-800 p-4 rounded-2xl mb-6">
+
+            <button id="update-password-btn"
+                    class="bg-yellow-400 hover:bg-white text-black font-bold py-4 w-full rounded-2xl mb-3 transition">
+              Update Password
+            </button>
+          </div>
         </div>
 
         <p class="text-center text-xs text-gray-500 mt-6">
@@ -155,6 +209,16 @@
       document.getElementById('dashboard-section').classList.add('hidden');
     }
 
+    function checkForRecoveryFlow() {
+      // If user arrived via password reset email link
+      if (window.isPasswordRecoveryFlow && window.isPasswordRecoveryFlow()) {
+        // Show the set-new-password form immediately
+        showRecoveryForm();
+        return true;
+      }
+      return false;
+    }
+
     function showDashboardUI(user) {
       document.getElementById('auth-section').classList.add('hidden');
       document.getElementById('dashboard-section').classList.remove('hidden');
@@ -177,6 +241,11 @@
     }
 
     async function checkAuth() {
+      // First check if we're in a password recovery flow from email link
+      if (checkForRecoveryFlow()) {
+        return; // Don't show normal login or dashboard yet
+      }
+
       const { data: { user } } = await client.auth.getUser();
       if (user) {
         showDashboardUI(user);
@@ -203,7 +272,7 @@
         errEl.classList.remove('hidden');
         return;
       }
-      showDashboardUI(data.user);
+      redirectAfterAuth();
     }
 
     async function handleSignUp() {
@@ -228,7 +297,7 @@
         errEl.textContent = 'Account created. Signing in...';
         errEl.classList.remove('hidden');
         errEl.classList.add('text-green-400');
-        setTimeout(() => checkAuth(), 700);
+        setTimeout(() => redirectAfterAuth(), 600);
       } else {
         errEl.textContent = 'Check your email for a confirmation link.';
         errEl.classList.remove('hidden');
@@ -237,6 +306,132 @@
 
     async function handleLogout() {
       await client.auth.signOut();
+      window.location.reload();
+    }
+
+    // ---------- PASSWORD RESET ----------
+    function showLoginForm() {
+      document.getElementById('login-form').classList.remove('hidden');
+      document.getElementById('forgot-form').classList.add('hidden');
+      document.getElementById('recovery-form').classList.add('hidden');
+      clearAuthMessages();
+    }
+
+    function showForgotForm() {
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('forgot-form').classList.remove('hidden');
+      document.getElementById('recovery-form').classList.add('hidden');
+      clearAuthMessages();
+      // prefill email if user already typed it
+      const emailInput = document.getElementById('auth-email');
+      const forgotInput = document.getElementById('forgot-email');
+      if (emailInput && forgotInput && emailInput.value) {
+        forgotInput.value = emailInput.value;
+      }
+    }
+
+    function clearAuthMessages() {
+      ['auth-error', 'forgot-error', 'forgot-success', 'recovery-error', 'recovery-success'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.add('hidden');
+          el.textContent = '';
+          el.classList.remove('text-green-400', 'text-red-400');
+        }
+      });
+    }
+
+    async function handleForgotPassword() {
+      const email = document.getElementById('forgot-email').value.trim();
+      const errEl = document.getElementById('forgot-error');
+      const successEl = document.getElementById('forgot-success');
+
+      errEl.classList.add('hidden');
+      successEl.classList.add('hidden');
+
+      if (!email) {
+        errEl.textContent = 'Please enter your email address.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        // Use the current page as redirect target
+        const redirectUrl = window.location.origin + window.location.pathname;
+        await window.requestPasswordReset(email, redirectUrl);
+
+        successEl.textContent = 'Password reset link sent! Check your email inbox (and spam folder).';
+        successEl.classList.remove('hidden');
+        successEl.classList.add('text-green-400');
+      } catch (err) {
+        errEl.textContent = err.message || 'Failed to send reset email. Please try again.';
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    async function handleUpdatePassword() {
+      const newPass = document.getElementById('recovery-password').value;
+      const confirmPass = document.getElementById('recovery-password-confirm').value;
+      const errEl = document.getElementById('recovery-error');
+      const successEl = document.getElementById('recovery-success');
+
+      errEl.classList.add('hidden');
+      successEl.classList.add('hidden');
+
+      if (!newPass || newPass.length < 6) {
+        errEl.textContent = 'Password must be at least 6 characters.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (newPass !== confirmPass) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        await window.updateUserPassword(newPass);
+        successEl.textContent = 'Password updated successfully! You are now signed in.';
+        successEl.classList.remove('hidden');
+        successEl.classList.add('text-green-400');
+
+        // After successful password update, Supabase usually keeps the session.
+        // We can reload the page or switch to dashboard.
+        setTimeout(() => {
+          redirectAfterAuth();
+        }, 900);
+      } catch (err) {
+        errEl.textContent = err.message || 'Failed to update password.';
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    function showRecoveryForm() {
+      // Hide everything else in the auth card
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('forgot-form').classList.add('hidden');
+      document.getElementById('recovery-form').classList.remove('hidden');
+
+      // Clear any previous messages
+      clearAuthMessages();
+
+      // Optional: focus the first password field
+      setTimeout(() => {
+        const pw = document.getElementById('recovery-password');
+        if (pw) pw.focus();
+      }, 50);
+    }
+
+    // After successful login/signup/recovery, redirect to ?return=... page if provided (e.g. checkout)
+    function redirectAfterAuth() {
+      const params = new URLSearchParams(window.location.search);
+      const returnTo = params.get('return');
+      if (returnTo && !returnTo.includes('://') && !returnTo.startsWith('//')) {
+        // relative path safety
+        window.location.href = returnTo;
+        return;
+      }
+      // default behavior: reload so the normal checkAuth flow shows the dashboard
       window.location.reload();
     }
 
@@ -453,11 +648,36 @@
         document.getElementById('stat-favs').textContent = favs.length;
       });
 
+      // Forgot password wiring
+      const forgotBtn = document.getElementById('forgot-password-btn');
+      const sendResetBtn = document.getElementById('send-reset-btn');
+      const backToLoginBtn = document.getElementById('back-to-login-btn');
+      const updatePassBtn = document.getElementById('update-password-btn');
+
+      if (forgotBtn) forgotBtn.addEventListener('click', showForgotForm);
+      if (sendResetBtn) sendResetBtn.addEventListener('click', handleForgotPassword);
+      if (backToLoginBtn) backToLoginBtn.addEventListener('click', showLoginForm);
+      if (updatePassBtn) updatePassBtn.addEventListener('click', handleUpdatePassword);
+
       // Enter key in login
       ['auth-email', 'auth-password'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('keypress', e => {
           if (e.key === 'Enter') handleLogin();
+        });
+      });
+
+      // Enter key support for forgot + recovery
+      ['forgot-email'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('keypress', e => {
+          if (e.key === 'Enter') handleForgotPassword();
+        });
+      });
+      ['recovery-password', 'recovery-password-confirm'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('keypress', e => {
+          if (e.key === 'Enter') handleUpdatePassword();
         });
       });
 
@@ -475,5 +695,6 @@
       await initAccount();
     };
   </script>
+  
 </body>
 </html>

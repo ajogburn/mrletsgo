@@ -1,174 +1,341 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Checkout | Mr. LetsGo</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <script src="supabase.js"></script>
-  <script src="main.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-black text-white">
 
   <div id="header-placeholder"></div>
 
-  <div class="max-w-7xl mx-auto px-6 py-12">
-    <h1 class="text-5xl font-black mb-10">Checkout</h1>
-    
-    <div class="grid lg:grid-cols-5 gap-12">
-      <!-- Left Side - Shipping -->
-      <div class="lg:col-span-3">
-        <h2 class="text-2xl font-bold mb-6">Shipping Details</h2>
-        <div class="space-y-6">
-          <div class="grid grid-cols-2 gap-4">
-            <input type="text" placeholder="First Name" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
-            <input type="text" placeholder="Last Name" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+  <div class="max-w-5xl mx-auto px-6 py-10">
+    <h1 class="text-4xl font-black mb-2">Checkout</h1>
+    <p class="text-gray-400 mb-8">Review your items and provide your contact &amp; shipping details. No payment is taken on this site.</p>
+
+    <!-- Main checkout area -->
+    <div id="checkout-content">
+      <div class="grid md:grid-cols-2 gap-10">
+        <!-- Left: Shipping + Contact Form -->
+        <div>
+          <h2 class="text-2xl font-bold mb-6">Contact &amp; Shipping Information</h2>
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs uppercase tracking-widest text-gray-500 mb-1.5">First Name</label>
+                <input type="text" id="first-name" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+              </div>
+              <div>
+                <label class="block text-xs uppercase tracking-widest text-gray-500 mb-1.5">Last Name</label>
+                <input type="text" id="last-name" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase tracking-widest text-gray-500 mb-1.5">Email Address</label>
+              <input type="email" id="email" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase tracking-widest text-gray-500 mb-1.5">Phone Number <span class="text-gray-600">(recommended for faster contact)</span></label>
+              <input type="tel" id="phone" placeholder="(555) 123-4567" class="w-full bg-zinc-900 p-4 rounded-2xl">
+            </div>
+
+            <div>
+              <label class="block text-xs uppercase tracking-widest text-gray-500 mb-1.5">Street Address</label>
+              <input type="text" id="address" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="sm:col-span-1">
+                <label class="block text-xs uppercase tracking-widest text-gray-500 mb-1.5">City</label>
+                <input type="text" id="city" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+              </div>
+              <div>
+                <label class="block text-xs uppercase tracking-widest text-gray-500 mb-1.5">State</label>
+                <input type="text" id="state" placeholder="CA" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+              </div>
+              <div>
+                <label class="block text-xs uppercase tracking-widest text-gray-500 mb-1.5">ZIP Code</label>
+                <input type="text" id="zip" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-gray-500 pt-1">
+              All fields are required except phone. Double-check your email — this is how I will contact you.
+            </p>
           </div>
-          <input type="email" placeholder="Email Address" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
-          <input type="text" placeholder="Street Address" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
-          <div class="grid grid-cols-3 gap-4">
-            <input type="text" placeholder="City" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
-            <input type="text" placeholder="State" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
-            <input type="text" placeholder="ZIP" class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4">
+        </div>
+
+        <!-- Right: Order Summary -->
+        <div>
+          <h2 class="text-2xl font-bold mb-6">Order Summary</h2>
+          <div id="cart-summary" class="bg-zinc-900 rounded-3xl p-6 mb-6"></div>
+
+          <div class="bg-zinc-900 rounded-3xl p-8">
+            <div class="flex justify-between text-lg mb-6">
+              <span>Total</span>
+              <span id="total-amount" class="font-bold text-yellow-400 text-2xl"></span>
+            </div>
+
+            <button id="submit-order-btn"
+                    class="w-full bg-yellow-400 hover:bg-white active:bg-yellow-300 transition text-black font-bold py-4 text-lg rounded-2xl">
+              SUBMIT ORDER REQUEST
+            </button>
+
+            <div class="mt-5 text-center">
+              <p class="text-xs text-gray-400 leading-snug">
+                No payment is collected here.<br>
+                I will personally contact you using the information above to arrange payment on my own platforms and confirm shipping.
+              </p>
+              <a href="cart.html" class="inline-block mt-3 text-xs text-yellow-400 hover:underline">← Edit cart</a>
+            </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Right Side - Order Summary -->
-      <div class="lg:col-span-2">
-        <h2 class="text-2xl font-bold mb-6">Order Summary</h2>
-        <div id="order-summary" class="bg-zinc-900 rounded-3xl p-6 mb-8"></div>
+    <!-- Success state (shown after submit) -->
+    <div id="success-content" class="hidden">
+      <div class="max-w-xl mx-auto bg-zinc-900 rounded-3xl p-10 text-center">
+        <div class="mx-auto w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mb-6">
+          <i class="fa-solid fa-check text-green-500 text-3xl"></i>
+        </div>
+        <h2 class="text-3xl font-black mb-2">Order Request Received</h2>
+        <div id="success-order-id" class="text-yellow-400 font-mono text-sm tracking-[3px] mb-4"></div>
 
-        <div class="bg-zinc-900 rounded-3xl p-6">
-          <div class="flex justify-between mb-2">
-            <span>Subtotal</span>
-            <span id="subtotal">$513</span>
-          </div>
-          <div class="flex justify-between mb-6">
-            <span>Shipping</span>
-            <span class="text-green-400">FREE</span>
-          </div>
-          <hr class="border-zinc-700">
-          <div class="flex justify-between text-xl font-bold mt-4">
-            <span>Total</span>
-            <span id="total" class="text-yellow-400">$513</span>
-          </div>
+        <p class="text-gray-300 mb-6">
+          Thank you! I've received your request. I'll contact you at the email (and phone if provided) within the next 24 hours to arrange payment and shipping.
+        </p>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <a href="account.html" 
+             class="inline-flex items-center justify-center bg-yellow-400 text-black font-bold px-8 py-3 rounded-2xl hover:bg-white transition">
+            View My Orders
+          </a>
+          <a href="shop.html" 
+             class="inline-flex items-center justify-center border border-zinc-700 hover:bg-zinc-800 font-semibold px-8 py-3 rounded-2xl transition">
+            Continue Shopping
+          </a>
         </div>
 
-        <button onclick="completeOrder()" 
-          class="mt-8 w-full bg-yellow-400 hover:bg-white text-black py-6 rounded-2xl font-bold text-xl transition">
-          PLACE ORDER
-        </button>
-        <p id="checkout-status" class="text-center text-sm mt-3 text-gray-400"></p>
+        <p class="mt-8 text-xs text-gray-500">
+          Your order is saved in your account. You can check status anytime.
+        </p>
       </div>
     </div>
   </div>
 
   <div id="footer-placeholder"></div>
 
+  <script src="supabase.js"></script>
+  <script src="main.js"></script>
+
   <script>
-    initCommonUI();
+    // Render cart summary
+    function renderCheckoutSummary() {
+      const cart = window.getCart ? window.getCart() : [];
+      const summaryDiv = document.getElementById('cart-summary');
+      const totalEl = document.getElementById('total-amount');
 
-    function renderOrderSummary() {
-      const summaryEl = document.getElementById('order-summary');
-      const subtotalEl = document.getElementById('subtotal');
-      const totalEl = document.getElementById('total');
-      if (!summaryEl || !subtotalEl || !totalEl) return;
+      if (!summaryDiv || !totalEl) return;
 
-      const cart = getCart();
       if (cart.length === 0) {
-        summaryEl.innerHTML = `<p class="text-gray-400">Your cart is empty. <a href="shop.html" class="text-yellow-400 hover:underline">Go shopping</a></p>`;
-        subtotalEl.textContent = '$0';
+        summaryDiv.innerHTML = `
+          <div class="text-center py-6">
+            <p class="text-gray-400">Your cart is empty.</p>
+            <a href="shop.html" class="text-sm text-yellow-400 hover:underline mt-2 inline-block">Browse the shop →</a>
+          </div>`;
         totalEl.textContent = '$0';
+        // disable submit if empty
+        const btn = document.getElementById('submit-order-btn');
+        if (btn) btn.disabled = true;
         return;
       }
 
       let html = '';
-      let subtotal = 0;
+      let total = 0;
 
       cart.forEach(item => {
-        const lineTotal = item.price * (item.quantity || 1);
-        subtotal += lineTotal;
-        const sizeLabel = item.size ? ` (US ${item.size})` : '';
+        const qty = item.quantity || 1;
+        const itemTotal = item.price * qty;
+        total += itemTotal;
+
         html += `
-          <div class="flex justify-between py-1.5 text-sm">
-            <span class="truncate pr-2">${item.name}${sizeLabel} ×${item.quantity || 1}</span>
-            <span class="whitespace-nowrap">$${lineTotal}</span>
+          <div class="flex gap-4 mb-4 last:mb-0">
+            <img src="${item.img}" class="w-16 h-16 object-cover rounded-xl flex-shrink-0" onerror="this.src='https://via.placeholder.com/64x64'">
+            <div class="flex-1 min-w-0">
+              <div class="font-medium leading-tight">${item.name}</div>
+              <div class="text-sm text-gray-400 mt-0.5">Size ${item.size || '—'} × ${qty}</div>
+            </div>
+            <div class="text-right font-medium whitespace-nowrap">$${itemTotal}</div>
           </div>
         `;
       });
 
-      summaryEl.innerHTML = html;
-      subtotalEl.textContent = '$' + subtotal;
-      totalEl.textContent = '$' + subtotal;
+      summaryDiv.innerHTML = html;
+      totalEl.textContent = '$' + total.toFixed(0);
     }
 
-    async function completeOrder() {
-      const statusEl = document.getElementById('checkout-status');
-      const cart = getCart();
+    // Collect form values into shipping object matching what admin expects
+    function collectShippingData() {
+      return {
+        firstName: (document.getElementById('first-name')?.value || '').trim(),
+        lastName: (document.getElementById('last-name')?.value || '').trim(),
+        email: (document.getElementById('email')?.value || '').trim(),
+        phone: (document.getElementById('phone')?.value || '').trim(),
+        address: (document.getElementById('address')?.value || '').trim(),
+        city: (document.getElementById('city')?.value || '').trim(),
+        state: (document.getElementById('state')?.value || '').trim(),
+        zip: (document.getElementById('zip')?.value || '').trim()
+      };
+    }
 
-      if (cart.length === 0) {
-        alert("Your cart is empty.");
+    // Basic validation
+    function validateForm(shipping) {
+      const required = ['firstName', 'lastName', 'email', 'address', 'city', 'state', 'zip'];
+      for (const field of required) {
+        if (!shipping[field]) {
+          return `Please fill out ${field === 'firstName' ? 'First Name' : field === 'lastName' ? 'Last Name' : field}.`;
+        }
+      }
+      // very basic email check
+      if (!shipping.email.includes('@') || shipping.email.length < 5) {
+        return 'Please enter a valid email address.';
+      }
+      return null;
+    }
+
+    async function submitOrderRequest() {
+      const btn = document.getElementById('submit-order-btn');
+      const cart = window.getCart ? window.getCart() : [];
+
+      if (!cart.length) {
+        alert('Your cart is empty.');
         return;
       }
 
-      const total = getCartTotal();
+      const shipping = collectShippingData();
+      const validationError = validateForm(shipping);
+      if (validationError) {
+        alert(validationError);
+        return;
+      }
 
-      // Collect shipping data from the form (best effort)
-      const shipping = {
-        firstName: document.querySelector('input[placeholder="First Name"]')?.value || '',
-        lastName: document.querySelector('input[placeholder="Last Name"]')?.value || '',
-        email: document.querySelector('input[placeholder="Email Address"]')?.value || '',
-        address: document.querySelector('input[placeholder="Street Address"]')?.value || '',
-        city: document.querySelector('input[placeholder="City"]')?.value || '',
-        state: document.querySelector('input[placeholder="State"]')?.value || '',
-        zip: document.querySelector('input[placeholder="ZIP"]')?.value || ''
-      };
+      // Ensure user is logged in (required by existing RLS + createOrder)
+      const userId = await (window.getCurrentUserId ? window.getCurrentUserId() : Promise.resolve(null));
+      if (!userId) {
+        // Friendly prompt instead of hard error
+        const checkoutArea = document.getElementById('checkout-content');
+        if (checkoutArea) {
+          checkoutArea.innerHTML = `
+            <div class="bg-zinc-900 rounded-3xl p-8 text-center max-w-md mx-auto">
+              <i class="fa-solid fa-user-lock text-3xl text-yellow-400 mb-4"></i>
+              <h3 class="text-2xl font-bold mb-2">Login Required to Submit</h3>
+              <p class="text-gray-400 mb-6">Create a free account or log in so your order is saved, you can track it, and I can contact you easily. Your cart stays saved in this browser.</p>
+              
+              <div class="flex flex-col gap-3">
+                <a href="account.html?return=checkout.html" 
+                   class="bg-yellow-400 hover:bg-white text-black font-bold py-3 rounded-2xl transition">Log In or Create Account</a>
+                <button onclick="window.location.reload()" 
+                        class="border border-zinc-700 hover:bg-zinc-800 py-3 rounded-2xl text-sm">I already logged in — refresh this page</button>
+              </div>
+              <p class="text-[10px] text-gray-500 mt-4">After logging in, come back to this page and submit again.</p>
+            </div>`;
+        }
+        return;
+      }
 
-      statusEl.textContent = 'Processing order...';
-      statusEl.className = 'text-center text-sm mt-3 text-gray-400';
+      // Disable button during submit
+      const originalBtnText = btn ? btn.textContent : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'SUBMITTING...';
+      }
 
       try {
-        // Try to save a real order if the user is logged in
-        const user = await (window.getCurrentUser ? window.getCurrentUser() : Promise.resolve(null));
+        const total = window.getCartTotal ? window.getCartTotal() : 0;
 
-        if (user && window.createOrder) {
-          const savedOrder = await window.createOrder({
-            items: cart,
-            total: total,
-            shipping: shipping
-          });
+        // Use the existing createOrder helper (it snapshots items, user, etc.)
+        const order = await window.createOrder({
+          items: cart,
+          total: total,
+          shipping: shipping
+        });
 
-          clearCart();
-          renderOrderSummary();
-          setTimeout(updateCartCount, 50);
+        // Success: clear cart and show thank-you state
+        if (window.clearCart) window.clearCart();
 
-          statusEl.innerHTML = `✅ Order #${savedOrder.id} placed successfully for $${total}.<br>
-            <span class="text-xs">You can view it in <a href="account.html" class="text-yellow-400 underline">My Account</a>.</span>`;
-          statusEl.className = 'text-center text-sm mt-3 text-green-400';
+        // Hide checkout form, show success
+        const checkoutContent = document.getElementById('checkout-content');
+        const successContent = document.getElementById('success-content');
+        const orderIdEl = document.getElementById('success-order-id');
 
-          // Disable the button
-          const btns = document.querySelectorAll('button');
-          btns.forEach(b => { if (b.textContent.includes('PLACE ORDER')) b.disabled = true; });
-        } else {
-          // Not logged in — fall back to old demo behavior
-          alert(`✅ Thank you! Order placed for $${total} (Demo mode — log in at checkout for real order tracking)`);
-          clearCart();
-          renderOrderSummary();
-          setTimeout(updateCartCount, 50);
-          statusEl.textContent = 'Order placed in demo mode. Log in next time to save orders to your account.';
+        if (checkoutContent) checkoutContent.classList.add('hidden');
+        if (successContent) successContent.classList.remove('hidden');
+        if (orderIdEl && order && order.id) {
+          orderIdEl.textContent = `ORDER #${order.id}`;
         }
+
+        // Update header cart count if present
+        if (window.updateCartCount) window.updateCartCount();
+
       } catch (err) {
-        console.error(err);
-        statusEl.textContent = 'Failed to save order: ' + err.message;
-        statusEl.className = 'text-center text-sm mt-3 text-red-400';
+        console.error('Order submission failed:', err);
+        alert('Failed to submit order: ' + (err.message || 'Please try again or contact me directly.'));
+        // re-enable button
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = originalBtnText || 'SUBMIT ORDER REQUEST';
+        }
+      }
+    }
+
+    // Prefill email (and try name if we had it) when user is already logged in
+    async function prefillFromAuth() {
+      try {
+        const client = window.supabaseClient || window.getSupabase?.();
+        if (!client) return;
+
+        const { data: { user } } = await client.auth.getUser();
+        if (!user?.email) return;
+
+        const emailEl = document.getElementById('email');
+        if (emailEl && !emailEl.value) {
+          emailEl.value = user.email;
+        }
+      } catch (_) {
+        // silent — not critical
+      }
+    }
+
+    // Wire everything
+    function initCheckout() {
+      if (window.initCommonUI) window.initCommonUI();
+
+      renderCheckoutSummary();
+      prefillFromAuth();
+
+      // Wire submit button
+      const submitBtn = document.getElementById('submit-order-btn');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', submitOrderRequest);
+      }
+
+      // Also allow Enter in the last field to submit (nice UX)
+      const zipEl = document.getElementById('zip');
+      if (zipEl) {
+        zipEl.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') submitOrderRequest();
+        });
       }
     }
 
     window.onload = () => {
-      renderOrderSummary();
-      initCommonUI();
+      initCheckout();
     };
   </script>
 </body>

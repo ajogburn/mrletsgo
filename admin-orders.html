@@ -201,6 +201,7 @@
           <div class="font-semibold mb-1">Shipping Information</div>
           <div>${shipping.firstName || ''} ${shipping.lastName || ''}</div>
           <div class="text-gray-400">${shipping.email || order.user_email || ''}</div>
+          ${shipping.phone ? `<div class="text-yellow-400 mt-0.5">📞 ${shipping.phone}</div>` : ''}
           <div class="mt-1">${shipping.address || ''}</div>
           <div>${shipping.city || ''}${shipping.state ? ', ' + shipping.state : ''} ${shipping.zip || ''}</div>
         </div>` : `<div class="text-gray-400 text-sm">No shipping details recorded.</div>`;

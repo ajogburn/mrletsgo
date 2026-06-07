@@ -32,10 +32,51 @@
           Sign In
         </button>
 
-        <button id="signup-btn"
-                class="w-full text-sm text-gray-400 hover:text-white py-2">
-          Create account (first time setup)
-        </button>
+        <div class="flex items-center justify-between text-sm mb-1">
+          <button id="signup-btn"
+                  class="text-gray-400 hover:text-white py-1">
+            Create account (first time setup)
+          </button>
+          <button id="admin-forgot-btn"
+                  class="text-gray-400 hover:text-white py-1">
+            Forgot password?
+          </button>
+        </div>
+
+        <!-- Forgot password (admin) -->
+        <div id="admin-forgot-form" class="hidden mt-4 pt-4 border-t border-zinc-700">
+          <div id="admin-forgot-error" class="hidden mb-2 text-red-400 text-xs"></div>
+          <div id="admin-forgot-success" class="hidden mb-2 text-green-400 text-xs"></div>
+
+          <input id="admin-forgot-email" type="email" placeholder="Your email" 
+                 class="w-full bg-zinc-800 p-3 rounded-2xl mb-3 text-sm">
+
+          <button id="admin-send-reset-btn"
+                  class="w-full bg-yellow-400 text-black font-bold py-3 rounded-2xl text-sm hover:bg-white">
+            Send reset link
+          </button>
+          <button id="admin-back-login-btn"
+                  class="w-full text-xs text-gray-400 hover:text-white py-2 mt-1">
+            ← Back to login
+          </button>
+        </div>
+
+        <!-- Recovery form (shown when arriving from reset email) -->
+        <div id="admin-recovery-form" class="hidden mt-4 pt-4 border-t border-zinc-700">
+          <div class="text-xs mb-2 text-gray-300">Set new password</div>
+          <div id="admin-recovery-error" class="hidden mb-2 text-red-400 text-xs"></div>
+          <div id="admin-recovery-success" class="hidden mb-2 text-green-400 text-xs"></div>
+
+          <input id="admin-recovery-password" type="password" placeholder="New password" 
+                 class="w-full bg-zinc-800 p-3 rounded-2xl mb-2 text-sm">
+          <input id="admin-recovery-password2" type="password" placeholder="Confirm new password" 
+                 class="w-full bg-zinc-800 p-3 rounded-2xl mb-3 text-sm">
+
+          <button id="admin-update-pass-btn"
+                  class="w-full bg-yellow-400 text-black font-bold py-3 rounded-2xl text-sm hover:bg-white">
+            Update Password
+          </button>
+        </div>
       </div>
       <p class="text-center text-xs text-gray-500 mt-4">Only authorized accounts can manage the store.<br>Admin privileges are controlled in the database (profiles table → role column).</p>
     </div>
@@ -223,11 +264,60 @@
 
     // ---------- AUTH ----------
     async function checkAuth() {
+      // Check for password recovery flow first (user clicked reset link in email)
+      if (window.isPasswordRecoveryFlow && window.isPasswordRecoveryFlow()) {
+        showAdminRecoveryForm();
+        return;
+      }
+
       const { data: { user } } = await client.auth.getUser();
       if (user) {
         showManagementUI(user);
       } else {
         showLoginUI();
+      }
+    }
+
+    function showAdminRecoveryForm() {
+      document.getElementById('login-section').classList.add('hidden');
+      document.getElementById('management-section').classList.add('hidden');
+      document.getElementById('access-denied')?.classList.add('hidden');
+
+      const recovery = document.getElementById('admin-recovery-form');
+      if (recovery) recovery.classList.remove('hidden');
+    }
+
+    async function handleAdminUpdatePassword() {
+      const p1 = document.getElementById('admin-recovery-password').value;
+      const p2 = document.getElementById('admin-recovery-password2').value;
+      const errEl = document.getElementById('admin-recovery-error');
+      const successEl = document.getElementById('admin-recovery-success');
+
+      errEl.classList.add('hidden');
+      successEl.classList.add('hidden');
+
+      if (!p1 || p1.length < 6) {
+        errEl.textContent = 'Password must be at least 6 characters long.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (p1 !== p2) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        await window.updateUserPassword(p1);
+        successEl.textContent = 'Password updated! Reloading...';
+        successEl.classList.remove('hidden');
+
+        setTimeout(() => {
+          window.location.reload(); // will now log them in normally
+        }, 900);
+      } catch (err) {
+        errEl.textContent = err.message || 'Failed to update password.';
+        errEl.classList.remove('hidden');
       }
     }
 
@@ -393,6 +483,46 @@
     async function handleLogout() {
       await client.auth.signOut();
       window.location.reload();
+    }
+
+    // ---------- FORGOT PASSWORD (Admin page) ----------
+    function showAdminForgotForm() {
+      document.getElementById('login-form')?.classList?.add('hidden'); // in case we wrap later
+      document.getElementById('admin-forgot-form').classList.remove('hidden');
+      // prefill
+      const mainEmail = document.getElementById('login-email');
+      const forgotEmail = document.getElementById('admin-forgot-email');
+      if (mainEmail && forgotEmail && mainEmail.value) forgotEmail.value = mainEmail.value;
+    }
+
+    function hideAdminForgotForm() {
+      document.getElementById('admin-forgot-form').classList.add('hidden');
+    }
+
+    async function handleAdminForgotPassword() {
+      const email = document.getElementById('admin-forgot-email').value.trim();
+      const errEl = document.getElementById('admin-forgot-error');
+      const successEl = document.getElementById('admin-forgot-success');
+
+      errEl.classList.add('hidden');
+      successEl.classList.add('hidden');
+
+      if (!email) {
+        errEl.textContent = 'Please enter your email.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const redirectUrl = window.location.origin + window.location.pathname;
+        await window.requestPasswordReset(email, redirectUrl);
+
+        successEl.textContent = 'Reset link sent. Check your email.';
+        successEl.classList.remove('hidden');
+      } catch (err) {
+        errEl.textContent = err.message || 'Could not send reset email.';
+        errEl.classList.remove('hidden');
+      }
     }
 
     // ---------- PRODUCT MANAGEMENT ----------
@@ -616,6 +746,27 @@
       // Login handlers
       document.getElementById('login-btn').addEventListener('click', handleLogin);
       document.getElementById('signup-btn').addEventListener('click', handleSignUp);
+
+      // Forgot password (admin)
+      const adminForgotBtn = document.getElementById('admin-forgot-btn');
+      const adminSendResetBtn = document.getElementById('admin-send-reset-btn');
+      const adminBackBtn = document.getElementById('admin-back-login-btn');
+
+      if (adminForgotBtn) adminForgotBtn.addEventListener('click', showAdminForgotForm);
+      if (adminSendResetBtn) adminSendResetBtn.addEventListener('click', handleAdminForgotPassword);
+      if (adminBackBtn) adminBackBtn.addEventListener('click', hideAdminForgotForm);
+
+      // Recovery password update (admin)
+      const adminUpdatePassBtn = document.getElementById('admin-update-pass-btn');
+      if (adminUpdatePassBtn) adminUpdatePassBtn.addEventListener('click', handleAdminUpdatePassword);
+
+      // Enter support in admin recovery
+      ['admin-recovery-password', 'admin-recovery-password2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') handleAdminUpdatePassword();
+        });
+      });
 
       // Allow enter key in login
       ['login-email', 'login-password'].forEach(id => {

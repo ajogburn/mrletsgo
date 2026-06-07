@@ -662,3 +662,53 @@ window.createOrder = createOrder;
 window.getUserOrders = getUserOrders;
 window.getAllOrders = getAllOrders;
 window.updateOrderStatus = updateOrderStatus;
+
+// ============================================
+// Password Reset helpers (Supabase Auth)
+// ============================================
+
+/**
+ * Sends a password reset email.
+ * The email will contain a link that redirects back to your site (you must configure
+ * the redirect URL in Supabase Dashboard → Authentication → URL Configuration).
+ */
+async function requestPasswordReset(email, redirectTo = null) {
+  const client = window.supabaseClient || window.getSupabase?.();
+  if (!client) throw new Error('Supabase client not available');
+
+  const options = {};
+  if (redirectTo) {
+    options.redirectTo = redirectTo;
+  }
+
+  const { data, error } = await client.auth.resetPasswordForEmail(email, options);
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Updates the password for the currently authenticated user (used during recovery flow).
+ * This should only be called after the user has clicked the reset link and the session
+ * has been established with type=recovery.
+ */
+async function updateUserPassword(newPassword) {
+  const client = window.supabaseClient || window.getSupabase?.();
+  if (!client) throw new Error('Supabase client not available');
+
+  const { data, error } = await client.auth.updateUser({
+    password: newPassword
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+/** Detects if we are in a password recovery flow (user arrived from reset email link) */
+function isPasswordRecoveryFlow() {
+  const hash = window.location.hash;
+  return hash.includes('type=recovery') || hash.includes('access_token');
+}
+
+window.requestPasswordReset = requestPasswordReset;
+window.updateUserPassword = updateUserPassword;
+window.isPasswordRecoveryFlow = isPasswordRecoveryFlow;
