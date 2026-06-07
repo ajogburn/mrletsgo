@@ -663,6 +663,10 @@ window.getUserOrders = getUserOrders;
 window.getAllOrders = getAllOrders;
 window.updateOrderStatus = updateOrderStatus;
 
+// Make auth helpers reliably available globally (used by checkout etc.)
+window.getCurrentUserId = getCurrentUserId;
+window.MrLetsGo.getCurrentUserId = getCurrentUserId;
+
 // ============================================
 // Password Reset helpers (Supabase Auth)
 // ============================================

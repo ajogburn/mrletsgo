@@ -225,8 +225,15 @@
         return;
       }
 
-      // Ensure user is logged in (required by existing RLS + createOrder)
-      const userId = await (window.getCurrentUserId ? window.getCurrentUserId() : Promise.resolve(null));
+      // Robust auth check (use the Supabase client directly for reliability)
+      const client = window.supabaseClient || (window.getSupabase && window.getSupabase());
+      let userId = null;
+      if (client) {
+        try {
+          const { data: { user } } = await client.auth.getUser();
+          userId = user ? user.id : null;
+        } catch (_) {}
+      }
       if (!userId) {
         // Friendly prompt instead of hard error
         const checkoutArea = document.getElementById('checkout-content');
