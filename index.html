@@ -7,12 +7,20 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .hero-bg {
+      background-image: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)), 
+                        url('https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=2070');
+      background-size: cover;
+      background-position: center;
+    }
+  </style>
 </head>
 <body class="bg-black text-white">
 
   <div id="header-placeholder"></div>
 
-  <!-- HERO -->
+  <!-- HERO - Restored with big shoe background -->
   <section class="hero-bg h-screen flex items-center">
     <div class="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
       <div>
@@ -59,11 +67,11 @@
 
         if (error) throw error;
 
-        // New Drops (is_new_drop = true)
+        // New Drops
         const newDrops = products.filter(p => p.is_new_drop === true).slice(0, 4);
         renderSection('new-drops-grid', newDrops);
 
-        // Featured (is_featured = true or first 4)
+        // Featured
         const featured = products.filter(p => p.is_featured === true).slice(0, 4);
         renderSection('featured-grid', featured.length ? featured : products.slice(0, 4));
 
@@ -77,7 +85,7 @@
       if (!container) return;
 
       if (!items || items.length === 0) {
-        container.innerHTML = `<p class="col-span-full text-gray-400 text-center py-12">No items available</p>`;
+        container.innerHTML = `<p class="col-span-full text-gray-400 text-center py-12">No items available yet</p>`;
         return;
       }
 
