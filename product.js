@@ -1,4 +1,8 @@
-// products.js
+// product.js — LEGACY STATIC DATA (no longer used for the live site)
+// The site now loads all products from Supabase for consistency.
+// This file is kept only as a backup / for local testing if you want to switch back.
+// You can safely ignore or delete it.
+
 const products = [
   {
     id: 1,

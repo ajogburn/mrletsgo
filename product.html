@@ -21,6 +21,9 @@
   <script src="supabase.js"></script>
   <script src="main.js"></script>
   <script>
+    let currentProduct = null;
+    let selectedSize = null;
+
     async function loadProduct() {
       const params = new URLSearchParams(window.location.search);
       const id = parseInt(params.get('id'));
@@ -31,53 +34,83 @@
       }
 
       try {
-        const { data, error } = await window.supabaseClient
-          .from('products')
-          .select('*')
-          .eq('id', id)
-          .single();
+        // Load full list first — this populates window.products so addToCart() can find the item
+        const allProducts = await loadProductsFromSupabase();
 
-        if (error || !data) throw new Error("Product not found");
+        const product = allProducts.find(p => p.id === id) || null;
+        if (!product) {
+          // fallback single fetch
+          const { data, error } = await window.supabaseClient
+            .from('products')
+            .select('*')
+            .eq('id', id)
+            .single();
+          if (error || !data) throw new Error("Product not found");
+          currentProduct = data;
+        } else {
+          currentProduct = product;
+        }
 
-        document.getElementById('product-content').innerHTML = `
-          <div class="grid md:grid-cols-2 gap-12">
-            <div>
-              <img src="${data.img}" class="w-full rounded-3xl" onerror="this.src='https://via.placeholder.com/600x600/27272a/ffffff?text=Image+Not+Found'">
-            </div>
-            <div>
-              <h1 class="text-4xl font-black">${data.name}</h1>
-              <p class="text-yellow-400 text-3xl font-semibold mt-3">$${data.price}</p>
-
-              <div class="mt-10">
-                <h3 class="font-semibold mb-4">Select Size (US)</h3>
-                <div class="grid grid-cols-6 gap-3">
-                  ${[7,8,9,10,11,12].map(size => `
-                    <button onclick="selectSize(this)" class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400 transition">${size}</button>
-                  `).join('')}
-                </div>
-              </div>
-
-              <button onclick="addToCart(${data.id})" 
-                class="mt-12 w-full bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white transition">
-                ADD TO CART
-              </button>
-            </div>
-          </div>
-        `;
+        renderProduct(currentProduct);
       } catch (err) {
         console.error(err);
         document.getElementById('product-content').innerHTML = `<p class="text-red-400">Failed to load product.</p>`;
       }
     }
 
-    function selectSize(el) {
+    function renderProduct(data) {
+      document.getElementById('product-content').innerHTML = `
+        <div class="grid md:grid-cols-2 gap-12">
+          <div>
+            <img src="${data.img}" class="w-full rounded-3xl" 
+                 onerror="this.src='https://via.placeholder.com/600x600/27272a/ffffff?text=Image+Not+Found'">
+          </div>
+          <div>
+            <h1 class="text-4xl font-black">${data.name}</h1>
+            <p class="text-yellow-400 text-3xl font-semibold mt-3">$${data.price}</p>
+
+            <div class="mt-10">
+              <h3 class="font-semibold mb-4">Select Size (US)</h3>
+              <div class="grid grid-cols-6 gap-3" id="size-grid">
+                ${[7,8,9,10,11,12].map(size => `
+                  <button onclick="selectSize(this, ${size})" 
+                          class="size-btn border border-zinc-700 py-4 rounded-2xl hover:border-yellow-400 transition">${size}</button>
+                `).join('')}
+              </div>
+            </div>
+
+            <button onclick="handleAddToCart()" 
+              class="mt-12 w-full bg-yellow-400 text-black py-6 font-bold text-xl rounded-2xl hover:bg-white transition">
+              ADD TO CART
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectSize(el, size) {
+      selectedSize = size;
       document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('border-yellow-400', 'bg-zinc-900'));
       el.classList.add('border-yellow-400', 'bg-zinc-900');
     }
 
-    window.onload = () => {
+    function handleAddToCart() {
+      if (!currentProduct) return;
+      const success = addToCart(currentProduct.id, selectedSize);
+      if (success) {
+        // Find the add to cart button and give feedback
+        const addBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('ADD TO CART') || b.textContent.includes('ADDED'));
+        if (addBtn) {
+          const original = addBtn.textContent;
+          addBtn.textContent = 'ADDED ✓';
+          setTimeout(() => { addBtn.textContent = original; }, 1400);
+        }
+      }
+    }
+
+    window.onload = async () => {
       initCommonUI();
-      loadProduct();
+      await loadProduct();
     };
   </script>
 </body>

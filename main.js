@@ -3,6 +3,32 @@
 
 const CART_KEY = 'mrletsgo_cart';
 
+// Load products from Supabase and populate window.products for consistent addToCart etc.
+async function loadProductsFromSupabase() {
+  try {
+    const client = window.supabaseClient || window.getSupabase?.();
+    if (!client) {
+      console.warn('Supabase client not available for loading products');
+      return [];
+    }
+    const { data, error } = await client
+      .from('products')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+
+    window.products = Array.isArray(data) ? data : [];
+    console.log(`✅ Loaded ${window.products.length} products from Supabase`);
+    return window.products;
+  } catch (err) {
+    console.error('Failed to load products from Supabase:', err);
+    // Fallback to whatever was already set (e.g. static product.js on some pages)
+    if (!window.products || !Array.isArray(window.products)) window.products = [];
+    return window.products;
+  }
+}
+
 function getProducts() {
   return (window.products && Array.isArray(window.products)) ? window.products : [];
 }
@@ -125,4 +151,14 @@ function initCommonUI() {
 }
 
 // Convenience: call after cart mutations if you want immediate feedback elsewhere
-window.MrLetsGo = { getCart, addToCart, removeFromCart, updateCartQuantity, getCartTotal, clearCart, updateCartCount };
+window.MrLetsGo = {
+  getCart,
+  addToCart,
+  removeFromCart,
+  updateCartQuantity,
+  getCartTotal,
+  clearCart,
+  updateCartCount,
+  loadProductsFromSupabase,
+  getProducts
+};

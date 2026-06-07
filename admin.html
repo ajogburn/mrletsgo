@@ -1,67 +1,347 @@
-<script src="supabase.js"></script>
-<script>
-  async function loadAdminProducts() {
-    const container = document.getElementById('admin-products');
-    container.innerHTML = '<p class="text-gray-400">Loading products...</p>';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin | Mr. LetsGo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-black text-white p-8">
 
-    try {
-      const { data, error } = await window.supabaseClient
-        .from('products')
-        .select('*')
-        .order('id');
+  <div class="max-w-5xl mx-auto">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-5xl font-black">Admin Dashboard</h1>
+      <a href="index.html" class="text-sm text-gray-400 hover:text-white">← Back to site</a>
+    </div>
 
-      if (error) throw error;
+    <!-- LOGIN SECTION -->
+    <div id="login-section" class="max-w-md mx-auto">
+      <div class="bg-zinc-900 rounded-3xl p-8">
+        <h2 class="text-2xl font-bold mb-6">Sign in to manage products</h2>
 
-      if (!data || data.length === 0) {
-        container.innerHTML = '<p class="text-gray-400">No products yet. Add one above.</p>';
+        <div id="login-error" class="hidden mb-4 text-red-400 text-sm"></div>
+
+        <input id="login-email" type="email" placeholder="Email" 
+               class="w-full bg-zinc-800 p-4 rounded-2xl mb-3">
+        <input id="login-password" type="password" placeholder="Password" 
+               class="w-full bg-zinc-800 p-4 rounded-2xl mb-6">
+
+        <button id="login-btn"
+                class="bg-yellow-400 text-black font-bold py-4 w-full rounded-2xl hover:bg-white mb-3">
+          Sign In
+        </button>
+
+        <button id="signup-btn"
+                class="w-full text-sm text-gray-400 hover:text-white py-2">
+          Create account (first time setup)
+        </button>
+      </div>
+      <p class="text-center text-xs text-gray-500 mt-4">Only authorized accounts can manage the store.</p>
+    </div>
+
+    <!-- MANAGEMENT SECTION (hidden until logged in) -->
+    <div id="management-section" class="hidden">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-gray-400 text-sm">Logged in as</span>
+          <span id="current-user" class="font-medium ml-2"></span>
+        </div>
+        <button id="logout-btn"
+                class="text-sm px-4 py-2 rounded-xl border border-zinc-700 hover:bg-zinc-900">Log out</button>
+      </div>
+
+      <!-- Add / Edit Product -->
+      <div class="bg-zinc-900 rounded-3xl p-8 mb-8">
+        <h2 id="form-title" class="text-2xl font-bold mb-6">Add New Product</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input id="name" placeholder="Product Name" class="bg-zinc-800 p-4 rounded-2xl">
+          <input id="price" type="number" step="0.01" placeholder="Price (e.g. 220)" class="bg-zinc-800 p-4 rounded-2xl">
+        </div>
+        <input id="img" placeholder="Image URL (https://...)" class="w-full bg-zinc-800 p-4 rounded-2xl mt-4 mb-6">
+
+        <div class="flex gap-3">
+          <button id="submit-btn"
+                  class="flex-1 bg-yellow-400 text-black font-bold py-4 rounded-2xl hover:bg-white">
+            Add Product
+          </button>
+          <button id="cancel-edit-btn"
+                  class="hidden px-6 py-4 rounded-2xl border border-zinc-700 hover:bg-zinc-800">
+            Cancel Edit
+          </button>
+        </div>
+      </div>
+
+      <!-- Current Products -->
+      <div class="bg-zinc-900 rounded-3xl p-8">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-bold">Current Products</h2>
+          <button id="refresh-btn"
+                  class="text-sm px-4 py-2 rounded-xl border border-zinc-700 hover:bg-zinc-800">Refresh</button>
+        </div>
+
+        <div id="products-list">
+          <p class="text-gray-400">Loading products...</p>
+        </div>
+      </div>
+
+      <div id="admin-message" class="mt-6 text-center text-sm"></div>
+    </div>
+  </div>
+
+  <script src="supabase.js"></script>
+  <script>
+    const client = window.supabaseClient;
+
+    let editingId = null;
+
+    // ---------- AUTH ----------
+    async function checkAuth() {
+      const { data: { user } } = await client.auth.getUser();
+      if (user) {
+        showManagementUI(user);
+      } else {
+        showLoginUI();
+      }
+    }
+
+    function showLoginUI() {
+      document.getElementById('login-section').classList.remove('hidden');
+      document.getElementById('management-section').classList.add('hidden');
+    }
+
+    function showManagementUI(user) {
+      document.getElementById('login-section').classList.add('hidden');
+      document.getElementById('management-section').classList.remove('hidden');
+      document.getElementById('current-user').textContent = user.email;
+      loadProductList();
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errorEl = document.getElementById('login-error');
+
+      errorEl.classList.add('hidden');
+      if (!email || !password) {
+        errorEl.textContent = 'Please enter email and password';
+        errorEl.classList.remove('hidden');
         return;
       }
 
-      container.innerHTML = data.map(p => `
-        <div class="bg-zinc-900 rounded-3xl p-6 flex gap-6">
-          <img src="${p.img}" class="w-24 h-24 object-cover rounded-2xl" onerror="this.src='https://via.placeholder.com/100'">
-          <div class="flex-1">
-            <h3 class="font-semibold">${p.name}</h3>
-            <p class="text-yellow-400">$${p.price}</p>
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      if (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      showManagementUI(data.user);
+    }
+
+    async function handleSignUp() {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errorEl = document.getElementById('login-error');
+
+      errorEl.classList.add('hidden');
+      if (!email || !password || password.length < 6) {
+        errorEl.textContent = 'Enter a valid email and password (min 6 chars)';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      const { data, error } = await client.auth.signUp({ email, password });
+      if (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      if (data.user) {
+        // If email confirmation is OFF in Supabase, this will sign them in immediately
+        document.getElementById('login-error').textContent = 'Account created. Signing in...';
+        document.getElementById('login-error').classList.remove('hidden');
+        document.getElementById('login-error').classList.add('text-green-400');
+        setTimeout(() => {
+          checkAuth();
+        }, 800);
+      } else {
+        errorEl.textContent = 'Check your email for a confirmation link (or disable confirmations in Supabase Auth settings).';
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    async function handleLogout() {
+      await client.auth.signOut();
+      window.location.reload();
+    }
+
+    // ---------- PRODUCT MANAGEMENT ----------
+    async function loadProductList() {
+      const container = document.getElementById('products-list');
+      container.innerHTML = '<p class="text-gray-400">Loading products...</p>';
+
+      try {
+        const { data, error } = await client
+          .from('products')
+          .select('*')
+          .order('id', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          container.innerHTML = '<p class="text-gray-400">No products yet. Add your first one above.</p>';
+          return;
+        }
+
+        container.innerHTML = data.map(p => `
+          <div class="flex gap-4 bg-zinc-950 rounded-2xl p-4 mb-3 items-center">
+            <img src="${p.img}" class="w-20 h-20 object-cover rounded-xl flex-shrink-0" 
+                 onerror="this.src='https://via.placeholder.com/80x80/27272a/fff?text=No+Img'">
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold truncate">${p.name}</div>
+              <div class="text-yellow-400">$${p.price}</div>
+              <div class="text-xs text-gray-500">ID: ${p.id}</div>
+            </div>
+            <div class="flex gap-2 flex-shrink-0">
+              <button onclick="startEdit(${p.id}, '${escapeForAttr(p.name)}', ${p.price}, '${escapeForAttr(p.img)}')"
+                      class="px-4 py-2 text-sm rounded-xl border border-zinc-700 hover:bg-zinc-800">Edit</button>
+              <button onclick="deleteProduct(${p.id})"
+                      class="px-4 py-2 text-sm rounded-xl border border-red-900 text-red-400 hover:bg-red-950">Delete</button>
+            </div>
           </div>
-          <button onclick="deleteProduct(${p.id})" class="text-red-500 hover:text-red-400 px-4">Delete</button>
-        </div>
-      `).join('');
-    } catch (err) {
-      console.error(err);
-      container.innerHTML = `<p class="text-red-400">Error loading products: ${err.message}</p>`;
-    }
-  }
-
-  async function addProduct() {
-    const name = document.getElementById('name').value.trim();
-    const price = parseFloat(document.getElementById('price').value);
-    const img = document.getElementById('img').value.trim();
-
-    if (!name || !price || !img) {
-      alert("Please fill all fields");
-      return;
+        `).join('');
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = `<p class="text-red-400">Failed to load products: ${err.message}</p>`;
+      }
     }
 
-    const { error } = await window.supabaseClient.from('products').insert({ name, price, img });
+    function escapeForAttr(str) {
+      if (!str) return '';
+      return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
 
-    if (error) {
-      alert("Error: " + error.message);
-    } else {
-      alert("✅ Product added!");
+    function startEdit(id, name, price, img) {
+      editingId = id;
+      document.getElementById('name').value = name;
+      document.getElementById('price').value = price;
+      document.getElementById('img').value = img;
+
+      document.getElementById('form-title').textContent = 'Edit Product';
+      document.getElementById('submit-btn').textContent = 'Update Product';
+      document.getElementById('cancel-edit-btn').classList.remove('hidden');
+
+      // scroll to form
+      document.getElementById('name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function cancelEdit() {
+      editingId = null;
       document.getElementById('name').value = '';
       document.getElementById('price').value = '';
       document.getElementById('img').value = '';
-      loadAdminProducts();
+
+      document.getElementById('form-title').textContent = 'Add New Product';
+      document.getElementById('submit-btn').textContent = 'Add Product';
+      document.getElementById('cancel-edit-btn').classList.add('hidden');
     }
-  }
 
-  async function deleteProduct(id) {
-    if (!confirm("Delete this product?")) return;
-    const { error } = await window.supabaseClient.from('products').delete().eq('id', id);
-    if (error) alert("Delete failed");
-    else loadAdminProducts();
-  }
+    async function submitProduct() {
+      const name = document.getElementById('name').value.trim();
+      const price = parseFloat(document.getElementById('price').value);
+      const img = document.getElementById('img').value.trim();
+      const msg = document.getElementById('admin-message');
 
-  window.onload = loadAdminProducts;
-</script>
+      if (!name || !price || !img) {
+        msg.innerHTML = '<span class="text-red-400">Please fill all fields</span>';
+        return;
+      }
+
+      msg.innerHTML = '<span class="text-gray-400">Saving...</span>';
+
+      try {
+        let error;
+        if (editingId) {
+          // Update
+          ({ error } = await client
+            .from('products')
+            .update({ name, price, img })
+            .eq('id', editingId));
+        } else {
+          // Insert
+          ({ error } = await client
+            .from('products')
+            .insert({ name, price, img }));
+        }
+
+        if (error) throw error;
+
+        msg.innerHTML = `<span class="text-green-400">✅ ${editingId ? 'Updated' : 'Added'} successfully!</span>`;
+        cancelEdit();
+        await loadProductList();
+
+        // also refresh any global products cache
+        if (window.loadProductsFromSupabase) window.loadProductsFromSupabase();
+
+        setTimeout(() => { msg.innerHTML = ''; }, 2500);
+      } catch (err) {
+        console.error(err);
+        msg.innerHTML = `<span class="text-red-400">Error: ${err.message}</span>`;
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('Delete this product? This cannot be undone.')) return;
+
+      const msg = document.getElementById('admin-message');
+      msg.innerHTML = '<span class="text-gray-400">Deleting...</span>';
+
+      try {
+        const { error } = await client.from('products').delete().eq('id', id);
+        if (error) throw error;
+
+        msg.innerHTML = '<span class="text-green-400">Deleted.</span>';
+        await loadProductList();
+        if (window.loadProductsFromSupabase) window.loadProductsFromSupabase();
+        setTimeout(() => { msg.innerHTML = ''; }, 2000);
+      } catch (err) {
+        msg.innerHTML = `<span class="text-red-400">Delete failed: ${err.message}</span>`;
+      }
+    }
+
+    // ---------- INIT ----------
+    function initAdmin() {
+      // Login handlers
+      document.getElementById('login-btn').addEventListener('click', handleLogin);
+      document.getElementById('signup-btn').addEventListener('click', handleSignUp);
+
+      // Allow enter key in login
+      ['login-email', 'login-password'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') handleLogin();
+        });
+      });
+
+      // Management handlers
+      document.getElementById('logout-btn').addEventListener('click', handleLogout);
+      document.getElementById('submit-btn').addEventListener('click', submitProduct);
+      document.getElementById('cancel-edit-btn').addEventListener('click', cancelEdit);
+      document.getElementById('refresh-btn').addEventListener('click', loadProductList);
+
+      // Check current auth state
+      checkAuth();
+
+      // Optional: react to auth changes
+      client.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+          showLoginUI();
+        }
+      });
+    }
+
+    window.onload = initAdmin;
+  </script>
+</body>
+</html>
