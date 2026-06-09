@@ -27,26 +27,32 @@
       <div>
         <h2 class="text-2xl font-bold mb-8">Send Us a Message</h2>
         
-        <form id="contact-form" action="https://formsubmit.co/ajogburn96@gmail.com" method="POST" class="space-y-6">
+        <form id="contact-form" action="https://formsubmit.co/goldenchildh20@gmail.com" method="POST" class="space-y-6">
+          <!-- Honeypot for spam bots (keep this hidden) -->
+          <input type="text" name="_honey" style="display:none">
+
           <div class="grid grid-cols-2 gap-4">
-            <input type="text" name="First Name" placeholder="First Name" required
+            <input type="text" name="first_name" placeholder="First Name" required
                    class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400">
-            <input type="text" name="Last Name" placeholder="Last Name" required
+            <input type="text" name="last_name" placeholder="Last Name" required
                    class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400">
           </div>
           
-          <input type="email" name="Email" placeholder="Email Address" required
+          <!-- IMPORTANT: name="email" helps FormSubmit set the correct reply-to address -->
+          <input type="email" name="email" placeholder="Email Address" required
                  class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400">
           
-          <input type="text" name="Subject" placeholder="Subject" required
+          <input type="text" name="subject" placeholder="Subject" required
                  class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400">
           
-          <textarea name="Message" placeholder="Your Message" rows="6" required
+          <textarea name="message" placeholder="Your Message" rows="6" required
                     class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400"></textarea>
           
-          <!-- Hidden fields for better control -->
-          <input type="hidden" name="_subject" value="New Message from Mr. LetsGo Website!">
-          <input type="hidden" name="_next" value="https://mrletsgo.com/thank-you.html"> <!-- Optional thank you page -->
+          <!-- FormSubmit configuration -->
+          <input type="hidden" name="_subject" value="New Message from Mr. LetsGo Website">
+          <input type="hidden" name="_replyto" value="email"> <!-- use the email field above -->
+          <input type="hidden" name="_next" value="thank-you.html">
+          <!-- Note: _captcha=false can sometimes block delivery on first-time setups. Remove this line if emails still don't arrive. -->
           <input type="hidden" name="_captcha" value="false">
           <input type="hidden" name="_template" value="table">
 
@@ -57,9 +63,7 @@
         </form>
       </div>
 
-    
-        </div>
-      </div>
+     
     </div>
   </div>
 
@@ -67,13 +71,6 @@
 
   <script>
     initCommonUI();
-
-    // Optional: Nice success message
-    document.getElementById('contact-form').addEventListener('submit', function() {
-      setTimeout(() => {
-        alert("✅ Message sent successfully! We'll get back to you soon.");
-      }, 500);
-    });
   </script>
 </body>
 </html>

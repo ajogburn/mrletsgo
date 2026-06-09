@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thank You | Mr. LetsGo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <script src="supabase.js"></script>
+  <script src="main.js"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+  </style>
+</head>
+<body class="bg-black text-white">
+
+  <div id="header-placeholder"></div>
+
+  <div class="max-w-3xl mx-auto px-6 py-24">
+    <div class="bg-zinc-900 rounded-3xl p-10 md:p-16 text-center">
+      <!-- Success Icon -->
+      <div class="mx-auto w-20 h-20 rounded-full bg-yellow-400/10 flex items-center justify-center mb-8">
+        <i class="fa-solid fa-check text-yellow-400 text-5xl"></i>
+      </div>
+
+      <h1 class="text-5xl font-black tracking-tighter mb-4">THANK YOU</h1>
+      <p class="text-2xl text-gray-300 mb-6">Your message has been sent.</p>
+
+      <div class="max-w-md mx-auto">
+        <p class="text-gray-400 mb-8">
+          We've received your message and will get back to you as soon as possible. 
+          Keep an eye on your inbox (and spam folder, just in case).
+        </p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="index.html" 
+           class="inline-flex items-center justify-center bg-yellow-400 text-black font-bold px-10 py-4 rounded-2xl hover:bg-white transition">
+          Back to Home
+        </a>
+        <a href="shop.html" 
+           class="inline-flex items-center justify-center border border-zinc-700 hover:bg-zinc-800 font-semibold px-10 py-4 rounded-2xl transition">
+          Browse the Shop
+        </a>
+      </div>
+
+      <p class="mt-10 text-sm text-gray-500">
+        Need to send another message? <a href="contact.html" class="text-yellow-400 hover:underline">Go back to Contact</a>
+      </p>
+    </div>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script>
+    initCommonUI();
+  </script>
+</body>
+</html>
