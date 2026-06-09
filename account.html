@@ -621,9 +621,44 @@
                 `).join('')}
                 ${order.items.length > 2 ? `<div class="text-gray-500">+ ${order.items.length - 2} more</div>` : ''}
               </div>` : ''}
+
+            <!-- Added Cancel Button -->
+            ${ (order.status === 'pending' || order.status === 'processing') ? `
+            <div class="mt-4">
+              <button onclick="cancelOrder(${order.id})" 
+                      class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-2xl text-sm font-semibold transition">
+                Cancel Order
+              </button>
+            </div>` : ''}
           </div>
         `;
       }).join('');
+    }
+
+    // ==================== NEW CANCEL ORDER FUNCTION (Only Addition) ====================
+    async function cancelOrder(orderId) {
+      if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+        return;
+      }
+
+      try {
+        const { error } = await client
+          .from('orders')
+          .update({ status: 'cancelled' })
+          .eq('id', orderId);
+
+        if (error) throw error;
+
+        alert('✅ Order cancelled successfully.');
+
+        // Refresh the orders list
+        const myOrders = await (window.MrLetsGo.getUserOrders ? window.MrLetsGo.getUserOrders() : Promise.resolve([]));
+        renderMyOrders(myOrders);
+
+      } catch (err) {
+        console.error(err);
+        alert('Failed to cancel the order. Please try again.');
+      }
     }
 
     // Init
@@ -694,6 +729,9 @@
       if (window.initCommonUI) window.initCommonUI();
       await initAccount();
     };
+
+    // Make cancelOrder available globally
+    window.cancelOrder = cancelOrder;
   </script>
   
 </body>

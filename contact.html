@@ -27,72 +27,37 @@
       <div>
         <h2 class="text-2xl font-bold mb-8">Send Us a Message</h2>
         
-        <form class="space-y-6">
+        <form id="contact-form" action="https://formsubmit.co/ajogburn96@gmail.com" method="POST" class="space-y-6">
           <div class="grid grid-cols-2 gap-4">
-            <input type="text" placeholder="First Name" 
+            <input type="text" name="First Name" placeholder="First Name" required
                    class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400">
-            <input type="text" placeholder="Last Name" 
+            <input type="text" name="Last Name" placeholder="Last Name" required
                    class="bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400">
           </div>
           
-          <input type="email" placeholder="Email Address" 
+          <input type="email" name="Email" placeholder="Email Address" required
                  class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400">
           
-          <input type="text" placeholder="Subject" 
+          <input type="text" name="Subject" placeholder="Subject" required
                  class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400">
           
-          <textarea placeholder="Your Message" rows="6"
+          <textarea name="Message" placeholder="Your Message" rows="6" required
                     class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-yellow-400"></textarea>
           
-          <button type="button" onclick="sendMessage()" 
+          <!-- Hidden fields for better control -->
+          <input type="hidden" name="_subject" value="New Message from Mr. LetsGo Website!">
+          <input type="hidden" name="_next" value="https://mrletsgo.com/thank-you.html"> <!-- Optional thank you page -->
+          <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_template" value="table">
+
+          <button type="submit"
                   class="w-full bg-yellow-400 text-black py-5 font-bold text-lg rounded-2xl hover:bg-white transition">
             SEND MESSAGE
           </button>
         </form>
       </div>
 
-      <!-- Contact Info -->
-      <div class="space-y-10">
-        <div>
-          <h3 class="text-xl font-semibold mb-4 flex items-center gap-3">
-            <i class="fa-solid fa-store text-yellow-400"></i> Visit Our Store
-          </h3>
-          <p class="text-gray-300">
-            123 Sneaker Street<br>
-            Killeen, TX 76543<br>
-            United States
-          </p>
-        </div>
-
-        <div>
-          <h3 class="text-xl font-semibold mb-4 flex items-center gap-3">
-            <i class="fa-solid fa-phone text-yellow-400"></i> Call Us
-          </h3>
-          <p class="text-gray-300">+1 (254) 555-0123</p>
-        </div>
-
-        <div>
-          <h3 class="text-xl font-semibold mb-4 flex items-center gap-3">
-            <i class="fa-solid fa-envelope text-yellow-400"></i> Email Us
-          </h3>
-          <p class="text-gray-300">hello@mrletsgo.com</p>
-        </div>
-
-        <div>
-          <h3 class="text-xl font-semibold mb-4">Business Hours</h3>
-          <div class="space-y-2 text-gray-300">
-            <p>Monday - Friday: 10:00 AM - 7:00 PM</p>
-            <p>Saturday: 11:00 AM - 6:00 PM</p>
-            <p>Sunday: Closed</p>
-          </div>
-        </div>
-
-        <!-- Fake Map -->
-        <div class="bg-zinc-900 rounded-3xl h-64 flex items-center justify-center border border-zinc-700">
-          <div class="text-center">
-            <i class="fa-solid fa-map-location-dot text-5xl text-yellow-400 mb-3"></i>
-            <p class="text-gray-400">Interactive Map Coming Soon</p>
-          </div>
+    
         </div>
       </div>
     </div>
@@ -103,9 +68,12 @@
   <script>
     initCommonUI();
 
-    function sendMessage() {
-      alert("✅ Message sent successfully! (This is a demo)");
-    }
+    // Optional: Nice success message
+    document.getElementById('contact-form').addEventListener('submit', function() {
+      setTimeout(() => {
+        alert("✅ Message sent successfully! We'll get back to you soon.");
+      }, 500);
+    });
   </script>
 </body>
 </html>
